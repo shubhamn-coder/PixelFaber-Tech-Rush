@@ -758,9 +758,14 @@ async function connectWithRetry() {
     await createDemoUserIfMissing('admin@greendrop.org');
     console.log('⚡ GreenDrop: Demo accounts pre-seeded & ready.');
   } catch (dbErr: any) {
-    console.warn('⚠️ MongoDB is not running locally (ECONNREFUSED 127.0.0.1:27017).');
-    console.log('💡 GreenDrop API is active on http://localhost:5000 (Running in Offline/Demo fallback mode).');
-    console.log('💡 To enable persistent DB storage, set MONGO_URI in .env (or start MongoDB service).\n');
+    if (MONGO_URI.includes('<db_username>') || MONGO_URI.includes('<db_password>')) {
+      console.warn('⚠️ MONGO_URI in .env still contains placeholder `<db_username>` or `<db_password>`.');
+      console.log('💡 Please edit .env in greendrop-backend and replace <db_username> & <db_password> with your actual MongoDB username and password.\n');
+    } else {
+      console.warn(`⚠️ MongoDB Connection Failure: ${dbErr.message}`);
+      console.log('💡 GreenDrop API is active on http://localhost:5000 (Running in Offline/Demo fallback mode).');
+      console.log('💡 Check your MONGO_URI in .env or verify network IP whitelist in MongoDB Atlas.\n');
+    }
     setTimeout(connectWithRetry, 30000);
   }
 }
