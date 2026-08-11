@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "src/index.ts",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "npx -y kill-port 5000 && tsx watch src/index.ts",
     "build": "tsc",
     "start": "tsx src/index.ts"
   },
