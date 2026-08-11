@@ -209,9 +209,10 @@ class _RecycleTierScreenState extends State<RecycleTierScreen> {
 
   void _showPostRecycleItemDialog() {
     final titleCtrl = TextEditingController();
-    final weightCtrl = TextEditingController(text: '15');
-    final locationCtrl = TextEditingController(text: widget.user['address'] ?? 'Kothrud, Pune, MH');
+    final weightCtrl = TextEditingController();
+    final targetHubCtrl = TextEditingController(text: 'EcoThread Textile Shredders & Fiber Mill');
     final descCtrl = TextEditingController();
+    final locationCtrl = TextEditingController(text: widget.user['address'] ?? 'Kothrud, Pune, MH');
     String category = 'TEXTILES';
 
     showDialog(
@@ -220,39 +221,33 @@ class _RecycleTierScreenState extends State<RecycleTierScreen> {
         builder: (context, setModalState) {
           return AlertDialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            title: Row(
-              children: [
-                CircleAvatar(
-                  backgroundColor: Colors.teal.shade50,
-                  child: Icon(Icons.recycling_rounded, color: Colors.teal.shade800),
-                ),
-                const SizedBox(width: 10),
-                const Expanded(
-                  child: Text(
-                    'Post Item for Recycling / Upcycling',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ],
+            title: const Text(
+              'Post Worn-Out Item for Recycling',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF0F361A)),
             ),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'List completely worn-out or scrap products so certified recyclers & upcycling artists can process them.',
-                    style: TextStyle(fontSize: 11.5, color: Colors.black54),
-                  ),
-                  const SizedBox(height: 14),
-
+                  const SizedBox(height: 4),
                   TextField(
                     controller: titleCtrl,
                     decoration: InputDecoration(
-                      labelText: 'Item / Scrap Title *',
-                      hintText: 'e.g., 30 kg Damaged Denim Jeans Scraps',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                      prefixIcon: const Icon(Icons.title, color: Colors.teal),
+                      labelText: 'Worn-Out Item / Scrap Title *',
+                      hintText: 'e.g., 50 kg Damaged Denim Jeans Scraps',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  TextField(
+                    controller: weightCtrl,
+                    decoration: InputDecoration(
+                      labelText: 'Est. Quantity / Weight (e.g., 25 kg, 100 meters) *',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -260,9 +255,9 @@ class _RecycleTierScreenState extends State<RecycleTierScreen> {
                   DropdownButtonFormField<String>(
                     initialValue: category,
                     decoration: InputDecoration(
-                      labelText: 'Recycling Category *',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                      prefixIcon: const Icon(Icons.category_outlined, color: Colors.teal),
+                      labelText: 'Recycling Category',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                     ),
                     items: const [
                       DropdownMenuItem(value: 'TEXTILES', child: Text('Textiles & Fabrics 👕')),
@@ -270,29 +265,18 @@ class _RecycleTierScreenState extends State<RecycleTierScreen> {
                       DropdownMenuItem(value: 'PAPER & PACKAGING', child: Text('Paper & Packaging Scraps 📦')),
                       DropdownMenuItem(value: 'ARTISAN UPCYCLE', child: Text('Wood / Metal Artisan Upcycle 🎨')),
                     ],
-                    onChanged: (val) {
-                      if (val != null) setModalState(() => category = val);
+                    onChanged: (v) {
+                      if (v != null) setModalState(() => category = v);
                     },
                   ),
                   const SizedBox(height: 12),
 
                   TextField(
-                    controller: weightCtrl,
-                    keyboardType: TextInputType.number,
+                    controller: targetHubCtrl,
                     decoration: InputDecoration(
-                      labelText: 'Est. Weight (kg) *',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                      prefixIcon: const Icon(Icons.scale_outlined, color: Colors.teal),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  TextField(
-                    controller: locationCtrl,
-                    decoration: InputDecoration(
-                      labelText: 'Pickup Location / Address *',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                      prefixIcon: const Icon(Icons.location_on_outlined, color: Colors.teal),
+                      labelText: 'Target Beneficiaries / Processing Center',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -301,10 +285,10 @@ class _RecycleTierScreenState extends State<RecycleTierScreen> {
                     controller: descCtrl,
                     maxLines: 2,
                     decoration: InputDecoration(
-                      labelText: 'Description & Scrap Condition',
-                      hintText: 'e.g., High cotton content, torn or worn out.',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                      prefixIcon: const Icon(Icons.notes_outlined, color: Colors.teal),
+                      labelText: 'Additional Notes / Pickup Hours',
+                      hintText: 'e.g., High cotton content, ready for mechanical shredding.',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                     ),
                   ),
                 ],
@@ -313,43 +297,48 @@ class _RecycleTierScreenState extends State<RecycleTierScreen> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(c),
-                child: const Text('Cancel'),
-              ),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.teal.shade800,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                child: Text(
+                  'Cancel',
+                  style: TextStyle(color: Colors.green.shade900, fontWeight: FontWeight.bold, fontSize: 15),
                 ),
-                icon: const Icon(Icons.check_circle_rounded, size: 18),
-                label: const Text('Post Scrap Batch', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2E7D32),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
                 onPressed: () async {
+                  final nav = Navigator.of(c);
+                  final messenger = ScaffoldMessenger.of(context);
+
                   if (titleCtrl.text.trim().isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Please enter an item title.')),
+                    messenger.showSnackBar(
+                      const SnackBar(content: Text('Worn-out item title is required!')),
                     );
                     return;
                   }
+
+                  final parsedWeight = double.tryParse(weightCtrl.text.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 25.0;
 
                   final newItem = {
                     '_id': 'rec_user_${DateTime.now().millisecondsSinceEpoch}',
                     'title': titleCtrl.text.trim(),
                     'category': category,
                     'itemType': category,
-                    'weightKg': double.tryParse(weightCtrl.text) ?? 15,
+                    'weightKg': parsedWeight,
                     'condition': 'FAIR / WORN OUT',
                     'donorName': widget.user['name'] ?? 'Verified Member',
                     'location': locationCtrl.text.trim(),
-                    'partnerVendor': 'Eco-Certified Processing Center',
+                    'partnerVendor': targetHubCtrl.text.trim().isNotEmpty
+                        ? targetHubCtrl.text.trim()
+                        : 'EcoThread Textile Shredders & Fiber Mill',
                     'description': descCtrl.text.trim().isNotEmpty
                         ? descCtrl.text.trim()
-                        : 'Recyclable scrap batch ready for upcycling.',
+                        : 'Worn out materials listed for mechanical shredding & upcycling.',
                     'status': 'AVAILABLE',
                   };
-
-                  final nav = Navigator.of(c);
-                  final messenger = ScaffoldMessenger.of(context);
 
                   // Send to backend
                   try {
@@ -357,7 +346,7 @@ class _RecycleTierScreenState extends State<RecycleTierScreen> {
                       'title': titleCtrl.text.trim(),
                       'category': category,
                       'itemType': category,
-                      'weightKg': double.tryParse(weightCtrl.text) ?? 15,
+                      'weightKg': parsedWeight,
                       'condition': 'WORN OUT / RECYCLE',
                       'pickupAddress': locationCtrl.text.trim(),
                       'description': descCtrl.text.trim(),
@@ -367,22 +356,24 @@ class _RecycleTierScreenState extends State<RecycleTierScreen> {
                   if (!mounted) return;
                   nav.pop();
                   setState(() {
+                    _selectedCategory = 'ALL';
                     _recycleItems.insert(0, newItem);
                   });
 
                   messenger.showSnackBar(
                     const SnackBar(
-                      backgroundColor: Colors.teal,
+                      backgroundColor: Color(0xFF2E7D32),
                       content: Row(
                         children: [
                           Icon(Icons.check_circle, color: Colors.white),
                           SizedBox(width: 8),
-                          Text('🎉 Scrap Batch Posted! Recyclers & Artisans notified.'),
+                          Text('🎉 Requirement posted! Target recyclers & upcycling artisans notified.'),
                         ],
                       ),
                     ),
                   );
                 },
+                child: const Text('Post Requirement', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
               ),
             ],
           );
