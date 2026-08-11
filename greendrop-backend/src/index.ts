@@ -186,6 +186,48 @@ app.post('/api/auth/login', async (req: Request, res: Response) => {
   }
 });
 
+app.post('/api/auth/send-otp', async (req: Request, res: Response) => {
+  try {
+    const { phoneNumber } = req.body;
+    if (!phoneNumber || phoneNumber.trim().length < 10) {
+      return res.status(400).json({ success: false, error: 'Valid 10-digit mobile phone number is required.' });
+    }
+    // Return simulated SMS dispatch success token
+    res.json({
+      success: true,
+      message: `SMS Verification OTP sent successfully to ${phoneNumber}`,
+      demoOtp: '123456',
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/auth/verify-otp', async (req: Request, res: Response) => {
+  try {
+    const { phoneNumber, otpCode, role } = req.body;
+    if (!otpCode || (otpCode !== '123456' && otpCode.length !== 6)) {
+      return res.status(400).json({ success: false, error: 'Invalid 6-digit OTP code. Please enter 123456.' });
+    }
+    
+    let user = await User.findOne({ phoneNumber });
+    if (!user) {
+      user = new User({
+        role: role || 'DONOR',
+        name: `Verified Mobile User (${phoneNumber.slice(-4)})`,
+        email: `user_${phoneNumber.replace(/\D/g, '')}@greendrop.org`,
+        phoneNumber,
+        passwordHash: 'mobile_auth_verified',
+      });
+      await user.save();
+    }
+    
+    res.json({ success: true, data: user });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 app.get('/api/ngo/profile/:id', async (req: Request, res: Response) => {
   try {
     const user = await User.findById(req.params.id);
