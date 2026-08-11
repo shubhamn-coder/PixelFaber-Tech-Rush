@@ -134,7 +134,8 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    final bool canPop = Navigator.canPop(context);
+    final Widget content = Column(
       children: [
         // QUICK PROMPTS HORIZONTAL CAROUSEL
         Container(
@@ -252,5 +253,24 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
         )
       ],
     );
+
+    if (canPop) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Row(
+            children: [
+              Icon(Icons.smart_toy_rounded, size: 22),
+              SizedBox(width: 8),
+              Text('GreenDrop AI HelpBot', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+            ],
+          ),
+          backgroundColor: Colors.green.shade800,
+          foregroundColor: Colors.white,
+        ),
+        body: content,
+      );
+    }
+
+    return content;
   }
 }

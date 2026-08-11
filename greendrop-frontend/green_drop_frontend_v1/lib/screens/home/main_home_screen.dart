@@ -248,10 +248,7 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
               child: InkWell(
                 borderRadius: BorderRadius.circular(20),
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (c) => const ChatbotScreen()),
-                  );
+                  setState(() => _currentIndex = 9);
                 },
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -396,6 +393,14 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
                   setState(() => _currentIndex = 8);
                 },
               ),
+            ListTile(
+              leading: const Icon(Icons.smart_toy, color: Colors.green),
+              title: const Text('AI HelpBot'),
+              onTap: () {
+                Navigator.pop(context);
+                setState(() => _currentIndex = 9);
+              },
+            ),
             if (isAdmin)
               ListTile(
                 leading: const Icon(Icons.admin_panel_settings, color: Colors.purple),
