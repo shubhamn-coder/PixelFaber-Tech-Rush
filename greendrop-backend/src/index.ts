@@ -772,7 +772,15 @@ async function connectWithRetry() {
 
 async function startServer() {
   connectWithRetry();
-  app.listen(PORT, '0.0.0.0', () => console.log(`🚀 GreenDrop API listening on port ${PORT}`));
+  const server = app.listen(PORT, '0.0.0.0', () => console.log(`🚀 GreenDrop API listening on port ${PORT}`));
+  server.on('error', (err: any) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`\n❌ PORT ${PORT} IS ALREADY IN USE by another background Node process.`);
+      console.log(`💡 To free Port ${PORT}, run this command in PowerShell:`);
+      console.log(`   Stop-Process -Name node -Force\n`);
+      process.exit(1);
+    }
+  });
 }
 
 startServer().catch((error: Error) => {
