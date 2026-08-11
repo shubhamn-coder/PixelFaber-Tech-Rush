@@ -34,14 +34,10 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-<<<<<<< HEAD
-const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/greendrop';
-=======
-// Disable command buffering so un-connected DB queries fail immediately instead of hanging 10 seconds.
+// Disable command buffering so un-connected DB queries fail immediately instead of hanging.
 mongoose.set('bufferCommands', false);
 
-const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI;
->>>>>>> 11d5bb403ab85c131a7659e3d9f6ccf370ab7938
+const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/greendrop';
 
 // Middleware to check DB connection readiness
 app.use((req: Request, res: Response, next) => {

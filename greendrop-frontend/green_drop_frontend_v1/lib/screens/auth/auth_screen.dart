@@ -928,7 +928,7 @@ class _AuthScreenState extends State<AuthScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Welcome Back 👋',
+          'Welcome to GreenDrop App 👋',
           style: TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.w800,
@@ -988,27 +988,6 @@ class _AuthScreenState extends State<AuthScreen> {
           ],
         ),
         const SizedBox(height: 18),
-
-        // DEMO QUICK-FILL ROLE PILLS
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              '1-Tap Demo Sign-In:',
-              style: TextStyle(fontSize: 11.5, color: Colors.grey.shade700, fontWeight: FontWeight.w600),
-            ),
-            Row(
-              children: [
-                _buildDemoPill('DONOR', 'Donor', Colors.green.shade700),
-                const SizedBox(width: 6),
-                _buildDemoPill('NGO', 'NGO', Colors.blue.shade700),
-                const SizedBox(width: 6),
-                _buildDemoPill('ADMIN', 'Admin', Colors.purple.shade700),
-              ],
-            ),
-          ],
-        ),
-        const SizedBox(height: 14),
 
         _buildInputField(
           controller: _emailController,
@@ -1077,24 +1056,6 @@ class _AuthScreenState extends State<AuthScreen> {
           ],
         ),
       ],
-    );
-  }
-
-  Widget _buildDemoPill(String roleKey, String label, Color color) {
-    return GestureDetector(
-      onTap: () => _fillDemoAccount(roleKey),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color.withValues(alpha: 0.4)),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: color),
-        ),
-      ),
     );
   }
 
