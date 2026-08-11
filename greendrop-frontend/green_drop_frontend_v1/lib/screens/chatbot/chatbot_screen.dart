@@ -22,12 +22,13 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
   ];
 
   final List<String> _quickPrompts = [
-    '📜 How do 80G Tax Receipts work?',
-    '🔐 What is the 2-Way Passcode Handshake?',
-    '🚚 How to dispatch Porter or Uber Courier?',
+    '📦 How do I post a food or clothes donation?',
+    '📍 How do I track my donation pickup status?',
+    '🟢 What items can I donate (Food, Clothes, Books)?',
+    '🔒 Is my home address safe and private?',
+    '🍃 How are my Green Points & CO₂ impact calculated?',
     '🗺️ How to view NGO offices on MapmyIndia?',
     '🚨 How does Disaster Relief Ticker work?',
-    '📄 How can Admin view NGO legal documents?',
     '📋 How to respond to NGO Demand Requests?',
   ];
 
@@ -71,38 +72,58 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
 
     final q = userQuery.toLowerCase();
 
-    if (q.contains('donor') || q.contains('how to use') || q.contains('guide') || q.contains('start') || q.contains('step') || q.contains('user')) {
+    if (q.contains('track') || q.contains('pickup status') || q.contains('status')) {
+      reply =
+          "📍 **Tracking Your Donation Pickup Status**:\n\n"
+          "• **Requested**: An NGO has requested your item. Tap **'Accept Request'** to approve.\n"
+          "• **Accepted**: 1-on-1 chat opens with the NGO volunteer. You can view driver details or live ETA.\n"
+          "• **Passcode Handshake**: Tap **'QR Pass 🔑'** to generate your 6-digit verification code for doorstep collection!";
+    } else if (q.contains('what items') || q.contains('eligible') || q.contains('can i donate') || q.contains('category')) {
+      reply =
+          "🟢 **Eligible Donation Categories**:\n\n"
+          "• **Food**: Fresh cooked meals, bakery items, surplus party food, unopened packaged rations & pulses.\n"
+          "• **Clothing**: Clean winter jackets, sweaters, shoes, blankets, school uniforms.\n"
+          "• **Books & Education**: Textbooks, storybooks, stationery, school supplies.\n"
+          "• **Electronics & Household**: Working appliances, gadgets, toys, utensils.";
+    } else if (q.contains('safe') || q.contains('private') || q.contains('privacy') || q.contains('address')) {
+      reply =
+          "🔒 **Address Privacy & Security**:\n\n"
+          "• **Public Privacy**: Your exact street address is **never shown** on public feeds or search results.\n"
+          "• **Selective Disclosure**: Your address is shared **only** with the specific verified NGO whose pickup request you explicitly accept!\n"
+          "• **Doorstep Handshake**: Use your 6-digit verification code at collection for total security.";
+    } else if (q.contains('point') || q.contains('co2') || q.contains('calculated') || q.contains('impact') || q.contains('reward')) {
+      reply =
+          "🍃 **Green CO₂ Impact & Reward Points**:\n\n"
+          "• **CO₂ Saved**: Every kg of donated food saves ~2.5 kg CO₂; clothes save ~15 kg CO₂!\n"
+          "• **Eco Badges**: Complete donations to earn **Earth Guardian** and **Zero-Waste Champion** badges.\n"
+          "• **Impact Score**: View your live environmental dashboard under your Profile tab!";
+    } else if (q.contains('post') || q.contains('donate') || q.contains('item') || q.contains('how do i post') || q.contains('add')) {
+      reply =
+          "📦 **How to Post a Donation (Step-by-Step)**:\n\n"
+          "1. Tap the green **'+'** floating button on the Home screen.\n"
+          "2. Upload photos of your unused clothes, cooked/raw food, books, or electronics.\n"
+          "3. Fill in item title, category, weight, and pickup address, then tap **'Post Donation'**!\n"
+          "4. Local verified NGOs will browse your listing and send a pickup request.";
+    } else if (q.contains('donor') || q.contains('how to use') || q.contains('guide') || q.contains('start') || q.contains('step') || q.contains('user')) {
       reply =
           "🙋 **How to Use GreenDrop as a Donor (Step-by-Step Guide)**:\n\n"
-          "1. **Post a Donation**: Tap the green **'+'** button at the bottom right. Upload photos, enter item details (clothes, books, food, electronics), and your pickup address.\n"
-          "2. **NGO Matching**: Verified local NGOs (like SAMS Relief Network) browse and request your item.\n"
-          "3. **Accept Request**: Tap **'Accept Request'** on your item card to safely reveal your address to the NGO and open 1-on-1 chat.\n"
-          "4. **2-Way Handshake at Pickup**: Tap **'QR Pass 🔑'** to see your 6-digit code. Show it to the NGO volunteer at your door. Once verified, tap **'Confirm & Complete Handover'**!\n"
-          "5. **Tax Receipt & Impact**: Download your official **80G Tax Exemption PDF** and watch your CO₂ Environmental Points increase live under Profile!";
-    } else if (q.contains('tax') || q.contains('80g') || q.contains('receipt') || q.contains('exemption') || q.contains('deduction') || q.contains('12a')) {
+          "1. **Post a Donation**: Tap the green **'+'** button at the bottom right. Upload photos, enter item details, and your pickup address.\n"
+          "2. **NGO Matching**: Verified local NGOs browse and request your item.\n"
+          "3. **Accept Request**: Tap **'Accept Request'** on your item card to safely reveal your address to the NGO.\n"
+          "4. **2-Way Handshake at Pickup**: Tap **'QR Pass 🔑'** to see your 6-digit code. Show it to the volunteer at your door.\n"
+          "5. **Tax Receipt & Impact**: Download your official **80G Tax Exemption PDF** and watch your CO₂ Points increase live!";
+    } else if (q.contains('tax') || q.contains('80g') || q.contains('receipt') || q.contains('exemption') || q.contains('deduction')) {
       reply =
-          "📜 **80G Tax Receipts & Exemption Guidance**:\n\n• **For Donors**: Verified NGOs like SAMS Relief Network issue official 80G tax-deductible receipts for all contributions.\n• **How to Access**: Navigate to your **Profile / Impact History** tab after a donation handover is completed to download your official 80G Tax Exemption PDF receipt!";
-    } else if (q.contains('courier') || q.contains('uber') || q.contains('porter') || q.contains('zepto') || q.contains('blinkit') || q.contains('dispatch') || q.contains('delivery')) {
-      reply =
-          "🚚 **On-Demand Courier Dispatch (Porter, Uber, Zepto, Blinkit)**:\n\n• **For NGOs**: If your NGO lacks a driver vehicle, tap **'📦 Use External Porter Service'** on the item card.\n• **Supported Providers**: Choose between Porter, Uber Connect, Zepto Express, or Blinkit Flash.\n• **Live Tracking**: Both Donor & NGO receive driver name, phone number, and live arrival ETA!";
-    } else if (q.contains('qr') || q.contains('code') || q.contains('pass') || q.contains('verification') || q.contains('handshake') || q.contains('2-way')) {
-      reply =
-          "🔐 **2-Way Cryptographic Passcode Handshake**:\n\n1. **Passcode Generation**: Every claimed item generates a 6-digit verification code visible exclusively on the Donor's **'QR Pass 🔑'** button.\n2. **Volunteer Entry**: NGO volunteer types the donor's 6-digit code at doorstep collection.\n3. **Donor Final Confirmation**: Upon verification, donor taps green **'Confirm & Complete Handover'** button to complete transaction!";
+          "📜 **80G Tax Receipts & Exemption Guidance**:\n\n• **For Donors**: Verified NGOs issue official 80G tax-deductible receipts for all contributions.\n• **How to Access**: Navigate to your **Profile / Impact History** tab after a donation handover is completed to download your official 80G Tax Exemption PDF receipt!";
     } else if (q.contains('map') || q.contains('mapmyindia') || q.contains('mappls') || q.contains('navigation') || q.contains('pin') || q.contains('route')) {
       reply =
           "🗺️ **In-App Interactive Map & Navigation**:\n\n• **Donor View**: Renders verified NGO Headquarters pins (SAMS Relief Network HQ in Kothrud, Pune).\n• **NGO View**: Renders accepted donor pickup markers & **Blue Polyline Driver Route Lines** connecting stops.\n• **In-App Pin Tapping**: Tap any pin to view address, contact phone, and route directions directly inside GreenDrop!";
     } else if (q.contains('disaster') || q.contains('emergency') || q.contains('relief') || q.contains('flood') || q.contains('earthquake') || q.contains('crisis') || q.contains('rescue') || q.contains('ticker') || q.contains('ration')) {
       reply =
-          "🚨 **Emergency Disaster Relief Drives & Ticker**:\n\n• **NGO Emergency Activation**: NGOs facing crisis situations (floods, earthquakes, fires) toggle **Disaster Relief Mode**.\n• **Top 32px Emergency Ticker**: Broadcasts a high-priority 32px alert banner across the top of every donor screen.\n• **Immediate Supplies Matching**: Donors can instantly match critical emergency items (rations, blankets, medical kits, clean water) for priority volunteer pickup!";
-    } else if (q.contains('admin') || q.contains('document') || q.contains('deed') || q.contains('proof') || q.contains('trust')) {
+          "🚨 **Emergency Disaster Relief Drives & Ticker**:\n\n• **NGO Emergency Activation**: NGOs facing crisis situations toggle **Disaster Relief Mode**.\n• **Top 32px Emergency Ticker**: Broadcasts a high-priority 32px alert banner across the top of every donor screen.\n• **Immediate Supplies Matching**: Donors can instantly match critical emergency items (rations, blankets, medical kits, clean water) for priority volunteer pickup!";
+    } else if (q.contains('demand') || q.contains('requirement') || q.contains('need')) {
       reply =
-          "📄 **Admin Registration Document Verification**:\n\n• **For Admins**: Go to the Admin Dashboard or tap any NGO Profile.\n• **Legal Documents**: View all 3 NGO registration attachments (**Trust Deed Document**, **80G Tax Certificate**, and **12A Certificate**) to verify authenticity!";
-    } else if (q.contains('demand') || q.contains('requirement') || q.contains('need') || q.contains('delete')) {
-      reply =
-          "📋 **NGO Demand Board & Deletion**:\n\n• **For Donors**: View items requested by NGOs and tap **'🙋 I Want to Help'** to match specific items.\n• **For NGOs**: NGOs can post new demands or tap **'🗑️ Delete Requirement'** to remove fulfilled needs instantly!";
-    } else if (q.contains('donate') || q.contains('post') || q.contains('item') || q.contains('add')) {
-      reply =
-          "📦 **How to Post a Donation**:\n\n1. Tap the green **'+'** floating button on the Home screen.\n2. Upload photos via camera or device gallery.\n3. Fill in item title, category, weight, and pickup address, then tap **'Post Donation'**!";
+          "📋 **NGO Demand Board & Needs**:\n\n• **For Donors**: View items requested by NGOs under NGO Demands and tap **'🙋 I Want to Help'** to match specific items.";
     } else if (q.contains('zero') || q.contains('waste') || q.contains('recycle') || q.contains('upcycle') || q.contains('earth')) {
       reply =
           "♻️ **Zero-Waste Upcycling Routing**:\n\nItems tagged as *'Fair / Worn Out'* bypass standard feeds and route to Certified Zero-Waste Upcycling Hubs (textiles, e-waste, plastics) to earn **Earth Guardian Badges**!";
