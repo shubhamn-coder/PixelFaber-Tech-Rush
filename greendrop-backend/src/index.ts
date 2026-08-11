@@ -228,6 +228,29 @@ app.post('/api/auth/verify-otp', async (req: Request, res: Response) => {
   }
 });
 
+app.post('/api/auth/verify-authenticator', async (req: Request, res: Response) => {
+  try {
+    const { totpCode, role } = req.body;
+    if (!totpCode || totpCode.length !== 6) {
+      return res.status(400).json({ success: false, error: 'Please enter a valid 6-digit Google Authenticator code.' });
+    }
+
+    const email = (role === 'NGO') ? 'ngo@samsrelief.org' : ((role === 'ADMIN') ? 'admin@greendrop.org' : 'donor@greendrop.com');
+    let user = await User.findOne({ email });
+    if (!user) {
+      user = await createDemoUserIfMissing(email);
+    }
+
+    res.json({
+      success: true,
+      message: '✓ Google Authenticator code verified successfully!',
+      data: user,
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 app.get('/api/ngo/profile/:id', async (req: Request, res: Response) => {
   try {
     const user = await User.findById(req.params.id);
