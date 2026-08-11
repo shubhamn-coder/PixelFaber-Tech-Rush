@@ -563,20 +563,20 @@ class _AuthScreenState extends State<AuthScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF072114),
+      backgroundColor: const Color(0xFF0F5E2B),
       body: Stack(
         children: [
-          // 1. FULL-SCREEN ECO GREEN GRADIENT BACKDROP
+          // 1. VIBRANT BRIGHT ECO GREEN GRADIENT BACKDROP
           Container(
             height: double.infinity,
             width: double.infinity,
             decoration: const BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  Color(0xFF05180E),
-                  Color(0xFF0D331D),
-                  Color(0xFF1B5A33),
-                  Color(0xFF0A2B18),
+                  Color(0xFF0B4620),
+                  Color(0xFF146C34),
+                  Color(0xFF1E8A46),
+                  Color(0xFF0E5227),
                 ],
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
@@ -584,10 +584,27 @@ class _AuthScreenState extends State<AuthScreen> {
             ),
           ),
 
-          // 2. DECORATIVE SOFT LIGHT GLOW ORB
+          // 2. BRIGHT AMBIENT GLOW ORBS
           Positioned(
-            top: -40,
-            right: -40,
+            top: -50,
+            right: -50,
+            child: Container(
+              width: 280,
+              height: 280,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    const Color(0xFFA5D6A7).withValues(alpha: 0.45),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: -60,
+            left: -60,
             child: Container(
               width: 260,
               height: 260,
@@ -595,7 +612,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    const Color(0xFF81C784).withValues(alpha: 0.35),
+                    const Color(0xFF66BB6A).withValues(alpha: 0.35),
                     Colors.transparent,
                   ],
                 ),
@@ -658,16 +675,16 @@ class _AuthScreenState extends State<AuthScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 20),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.12),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: const Color(0xFF81C784).withValues(alpha: 0.35),
-          width: 1.2,
+          color: const Color(0xFFC8E6C9),
+          width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.25),
-            blurRadius: 18,
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 20,
             offset: const Offset(0, 8),
           ),
         ],
@@ -678,23 +695,24 @@ class _AuthScreenState extends State<AuthScreen> {
             size: 70,
             animate: true,
             showText: true,
-            textColor: Colors.white,
+            textColor: Color(0xFF0B3B1B),
           ),
           const SizedBox(height: 10),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
             decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.25),
+              color: const Color(0xFFE8F5E9),
               borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0xFFA5D6A7)),
             ),
             child: const Text(
               'Where giving back becomes second nature',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: Color(0xFFE2EFE4),
+                color: Color(0xFF1B5E20),
                 fontSize: 12.5,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.3,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.2,
               ),
             ),
           ),
@@ -704,22 +722,61 @@ class _AuthScreenState extends State<AuthScreen> {
             spacing: 8,
             runSpacing: 8,
             children: [
-              _buildGlassFeatureBadge(
+              _buildBrightFeatureBadge(
                 icon: Icons.eco,
                 label: 'Zero Waste Network',
-                badgeColor: const Color(0xFF81C784),
+                badgeColor: const Color(0xFF2E7D32),
+                bgColor: const Color(0xFFE8F5E9),
+                borderColor: const Color(0xFFA5D6A7),
               ),
-              _buildGlassFeatureBadge(
+              _buildBrightFeatureBadge(
                 icon: Icons.warning_amber_rounded,
                 label: 'Disaster Relief',
-                badgeColor: const Color(0xFFFFB74D),
+                badgeColor: const Color(0xFFE65100),
+                bgColor: const Color(0xFFFFF8E1),
+                borderColor: const Color(0xFFFFE082),
               ),
-              _buildGlassFeatureBadge(
+              _buildBrightFeatureBadge(
                 icon: Icons.verified_user_rounded,
                 label: 'Verified NGO Hub',
-                badgeColor: const Color(0xFF64B5F6),
+                badgeColor: const Color(0xFF1565C0),
+                bgColor: const Color(0xFFE3F2FD),
+                borderColor: const Color(0xFF90CAF9),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBrightFeatureBadge({
+    required IconData icon,
+    required String label,
+    required Color badgeColor,
+    required Color bgColor,
+    required Color borderColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: borderColor, width: 1.2),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: badgeColor),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: TextStyle(
+              color: badgeColor,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.2,
+            ),
           ),
         ],
       ),
@@ -1523,40 +1580,6 @@ class _AuthScreenState extends State<AuthScreen> {
                   const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 18),
                 ],
               ),
-      ),
-    );
-  }
-
-  Widget _buildGlassFeatureBadge({
-    required IconData icon,
-    required String label,
-    required Color badgeColor,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.25),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: badgeColor.withValues(alpha: 0.6),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 13, color: badgeColor),
-          const SizedBox(width: 5),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 10.5,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 0.2,
-            ),
-          ),
-        ],
       ),
     );
   }
