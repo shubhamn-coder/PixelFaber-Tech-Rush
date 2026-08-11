@@ -15,6 +15,8 @@ class _RecycleTierScreenState extends State<RecycleTierScreen> {
   bool _isLoading = true;
   String _selectedCategory = 'ALL';
 
+  static final List<Map<String, dynamic>> _userCreatedRecycleItems = [];
+
   @override
   void initState() {
     super.initState();
@@ -22,11 +24,12 @@ class _RecycleTierScreenState extends State<RecycleTierScreen> {
   }
 
   Future<void> _fetchRecycleItems() async {
+    List<dynamic> fetched = [];
     try {
       final res = await ApiService.get('/donations/nearby');
       if (res.statusCode == 200) {
         final all = jsonDecode(res.body)['data'] as List<dynamic>;
-        final filtered = all.where((item) {
+        fetched = all.where((item) {
           final condition = (item['condition'] ?? '').toString().toLowerCase();
           final category = (item['category'] ?? '').toString().toLowerCase();
           return condition.contains('worn') ||
@@ -35,28 +38,18 @@ class _RecycleTierScreenState extends State<RecycleTierScreen> {
               category.contains('scrap') ||
               category.contains('electronics');
         }).toList();
+      }
+    } catch (_) {}
 
-        if (mounted) {
-          setState(() {
-            _recycleItems = filtered.isNotEmpty ? filtered : _getDemoRecycleItems();
-            _isLoading = false;
-          });
-        }
-      } else {
-        if (mounted) {
-          setState(() {
-            _recycleItems = _getDemoRecycleItems();
-            _isLoading = false;
-          });
-        }
-      }
-    } catch (_) {
-      if (mounted) {
-        setState(() {
-          _recycleItems = _getDemoRecycleItems();
-          _isLoading = false;
-        });
-      }
+    if (fetched.isEmpty) {
+      fetched = _getDemoRecycleItems();
+    }
+
+    if (mounted) {
+      setState(() {
+        _recycleItems = [..._userCreatedRecycleItems, ...fetched];
+        _isLoading = false;
+      });
     }
   }
 
@@ -309,12 +302,10 @@ class _RecycleTierScreenState extends State<RecycleTierScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 ),
-                onPressed: () async {
-                  final nav = Navigator.of(c);
-                  final messenger = ScaffoldMessenger.of(context);
-
-                  if (titleCtrl.text.trim().isEmpty) {
-                    messenger.showSnackBar(
+                onPressed: () {
+                  final titleText = titleCtrl.text.trim();
+                  if (titleText.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Worn-out item title is required!')),
                     );
                     return;
@@ -324,7 +315,7 @@ class _RecycleTierScreenState extends State<RecycleTierScreen> {
 
                   final newItem = {
                     '_id': 'rec_user_${DateTime.now().millisecondsSinceEpoch}',
-                    'title': titleCtrl.text.trim(),
+                    'title': titleText,
                     'category': category,
                     'itemType': category,
                     'weightKg': parsedWeight,
@@ -340,27 +331,16 @@ class _RecycleTierScreenState extends State<RecycleTierScreen> {
                     'status': 'AVAILABLE',
                   };
 
-                  // Send to backend
-                  try {
-                    await ApiService.post('/donations', {
-                      'title': titleCtrl.text.trim(),
-                      'category': category,
-                      'itemType': category,
-                      'weightKg': parsedWeight,
-                      'condition': 'WORN OUT / RECYCLE',
-                      'pickupAddress': locationCtrl.text.trim(),
-                      'description': descCtrl.text.trim(),
-                    });
-                  } catch (_) {}
+                  // 1. Immediately pop dialog & update local UI state
+                  Navigator.pop(c);
+                  _userCreatedRecycleItems.insert(0, newItem);
 
-                  if (!mounted) return;
-                  nav.pop();
                   setState(() {
                     _selectedCategory = 'ALL';
                     _recycleItems.insert(0, newItem);
                   });
 
-                  messenger.showSnackBar(
+                  ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       backgroundColor: Color(0xFF2E7D32),
                       content: Row(
@@ -372,6 +352,17 @@ class _RecycleTierScreenState extends State<RecycleTierScreen> {
                       ),
                     ),
                   );
+
+                  // 2. Post to backend in background (non-blocking)
+                  ApiService.post('/donations', {
+                    'title': titleText,
+                    'category': category,
+                    'itemType': category,
+                    'weightKg': parsedWeight,
+                    'condition': 'WORN OUT / RECYCLE',
+                    'pickupAddress': locationCtrl.text.trim(),
+                    'description': descCtrl.text.trim(),
+                  }).then((_) {}).catchError((_) {});
                 },
                 child: const Text('Post Requirement', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
               ),
