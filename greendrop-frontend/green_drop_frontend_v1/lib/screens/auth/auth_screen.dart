@@ -566,56 +566,20 @@ class _AuthScreenState extends State<AuthScreen> {
       backgroundColor: const Color(0xFF0F5E2B),
       body: Stack(
         children: [
-          // 1. VIBRANT BRIGHT ECO GREEN GRADIENT BACKDROP
+          // 1. SEAMLESS RICH ECO GREEN GRADIENT BACKDROP
           Container(
             height: double.infinity,
             width: double.infinity,
             decoration: const BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  Color(0xFF0B4620),
-                  Color(0xFF146C34),
-                  Color(0xFF1E8A46),
+                  Color(0xFF0C4A22),
+                  Color(0xFF146A34),
+                  Color(0xFF1B7D3F),
                   Color(0xFF0E5227),
                 ],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-            ),
-          ),
-
-          // 2. BRIGHT AMBIENT GLOW ORBS
-          Positioned(
-            top: -50,
-            right: -50,
-            child: Container(
-              width: 280,
-              height: 280,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    const Color(0xFFA5D6A7).withValues(alpha: 0.45),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: -60,
-            left: -60,
-            child: Container(
-              width: 260,
-              height: 260,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    const Color(0xFF66BB6A).withValues(alpha: 0.35),
-                    Colors.transparent,
-                  ],
-                ),
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
             ),
           ),
