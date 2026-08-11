@@ -238,6 +238,43 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
         backgroundColor: Colors.green.shade800,
         foregroundColor: Colors.white,
         elevation: 2,
+        actions: [
+          Container(
+            margin: const EdgeInsets.only(right: 12, top: 8, bottom: 8),
+            child: Material(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              elevation: 2,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(20),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (c) => const ChatbotScreen()),
+                  );
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.smart_toy_rounded, size: 17, color: Colors.green.shade800),
+                      const SizedBox(width: 5),
+                      Text(
+                        'AI HelpBot',
+                        style: TextStyle(
+                          color: Colors.green.shade900,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
 
       // SIDE DRAWER: FULL MENU
@@ -359,14 +396,6 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
                   setState(() => _currentIndex = 8);
                 },
               ),
-            ListTile(
-              leading: const Icon(Icons.smart_toy, color: Colors.green),
-              title: const Text('AI HelpBot'),
-              onTap: () {
-                Navigator.pop(context);
-                setState(() => _currentIndex = 9);
-              },
-            ),
             if (isAdmin)
               ListTile(
                 leading: const Icon(Icons.admin_panel_settings, color: Colors.purple),
