@@ -34,7 +34,28 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
+<<<<<<< HEAD
 const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/greendrop';
+=======
+// Disable command buffering so un-connected DB queries fail immediately instead of hanging 10 seconds.
+mongoose.set('bufferCommands', false);
+
+const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI;
+>>>>>>> 11d5bb403ab85c131a7659e3d9f6ccf370ab7938
+
+// Middleware to check DB connection readiness
+app.use((req: Request, res: Response, next) => {
+  if (req.path === '/api/health' || req.path === '/api/version' || req.path === '/version') {
+    return next();
+  }
+  if (mongoose.connection.readyState !== 1) {
+    return res.status(503).json({
+      success: false,
+      error: '⚡ Server Database Initializing: MongoDB Cloud connection is establishing. Please retry in a few seconds.',
+    });
+  }
+  next();
+});
 
 app.get('/api/health', (_req: Request, res: Response) => {
   res.status(mongoose.connection.readyState === 1 ? 200 : 503).json({
@@ -720,7 +741,70 @@ app.delete('/api/admin/users/:id', async (req: Request, res: Response) => {
   }
 });
 
-// 7. MESSAGING / CHAT API
+// 7. GOOGLE GEMINI AI CHATBOT API
+app.post('/api/chatbot/gemini', async (req: Request, res: Response) => {
+  try {
+    const { prompt } = req.body;
+    if (!prompt?.trim()) {
+      return res.status(400).json({ success: false, error: 'Prompt is required.' });
+    }
+
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return res.status(503).json({
+        success: false,
+        error: 'Gemini API key is not configured in Environment Variables.',
+      });
+    }
+
+    const systemInstruction = `You are GreenDrop AI, an empathetic, highly knowledgeable AI Assistant & Concierge for the GreenDrop platform in Pune, India.
+Guide users on all GreenDrop features:
+1. 80G Tax Exemption Certificates: Donors get auto-generated 80G tax receipts for completed donations under Profile.
+2. 2-Way Handshake Security: NGO volunteer enters donor's 6-digit passcode; donor confirms handover.
+3. On-Demand Courier Dispatch: NGOs can dispatch Porter, Uber Connect, Zepto Express, or Blinkit Flash.
+4. Emergency Disaster Relief Drives: NGOs in flood/crisis zones activate Disaster Relief Mode with a 32px top dashboard ticker.
+5. In-App Interactive Map: Renders verified NGO office pins (SAMS Relief Network in Kothrud, Pune) and driver route polylines.
+6. Zero-Waste Upcycling: Worn-out items route to eco-hubs to earn Earth Guardian Badges.
+
+User Question: ${prompt}`;
+
+    const fetchRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/interactions?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'models/gemini-3.6-flash',
+        input: systemInstruction,
+      }),
+    });
+
+    const data: any = await fetchRes.json();
+    if (!fetchRes.ok) {
+      throw new Error(data.error?.message || 'Gemini API error');
+    }
+
+    let replyText = '';
+    if (Array.isArray(data.steps)) {
+      for (const step of data.steps) {
+        if (step.type === 'model_output' && Array.isArray(step.content)) {
+          for (const item of step.content) {
+            if (item.text) replyText += item.text;
+          }
+        }
+      }
+    }
+
+    if (!replyText.trim() && data.outputs?.[0]?.text) {
+      replyText = data.outputs[0].text;
+    }
+
+    res.json({ success: true, reply: replyText || 'Hello! How can I assist your GreenDrop donation journey today?', model: 'gemini-3.6-flash' });
+  } catch (error: any) {
+    console.error('Gemini API Error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 8. MESSAGING / CHAT API
 app.get('/api/chat/:donationId', async (req: Request, res: Response) => {
   try {
     const messages = await Message.find({ donationId: req.params.donationId }).sort({ createdAt: 1 });
@@ -751,7 +835,7 @@ async function connectWithRetry() {
     return;
   }
   try {
-    await mongoose.connect(MONGO_URI, { serverSelectionTimeoutMS: 3000 });
+    await mongoose.connect(MONGO_URI, { serverSelectionTimeoutMS: 5000 });
     console.log('✅ MongoDB connected successfully.');
     await createDemoUserIfMissing('donor@greendrop.com');
     await createDemoUserIfMissing('ngo@smilepune.org');
@@ -766,7 +850,7 @@ async function connectWithRetry() {
       console.log('💡 GreenDrop API is active on http://localhost:5000 (Running in Offline/Demo fallback mode).');
       console.log('💡 Check your MONGO_URI in .env or verify network IP whitelist in MongoDB Atlas.\n');
     }
-    setTimeout(connectWithRetry, 30000);
+    setTimeout(connectWithRetry, 5000);
   }
 }
 
