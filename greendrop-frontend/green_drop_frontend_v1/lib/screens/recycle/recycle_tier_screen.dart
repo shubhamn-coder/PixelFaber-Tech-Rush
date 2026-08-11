@@ -570,12 +570,22 @@ class _RecycleTierScreenState extends State<RecycleTierScreen> {
                                           const SizedBox(height: 4),
                                           Row(
                                             children: [
-                                              Icon(Icons.business_outlined, size: 14, color: Colors.teal.shade800),
+                                              Icon(
+                                                isClaimed ? Icons.verified_outlined : Icons.business_outlined,
+                                                size: 14,
+                                                color: isClaimed ? Colors.teal.shade800 : Colors.grey.shade700,
+                                              ),
                                               const SizedBox(width: 4),
                                               Expanded(
                                                 child: Text(
-                                                  'Processor: ${item['partnerVendor'] ?? 'Certified Recycler'}',
-                                                  style: TextStyle(fontSize: 11, color: Colors.teal.shade900, fontWeight: FontWeight.bold),
+                                                  isClaimed
+                                                      ? 'Assigned Processor: ${item['partnerVendor'] ?? 'Certified Recycler'}'
+                                                      : 'Target Processing Hub: ${item['partnerVendor'] ?? 'Certified Recycler'}',
+                                                  style: TextStyle(
+                                                    fontSize: 11,
+                                                    color: isClaimed ? Colors.teal.shade900 : Colors.grey.shade800,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
                                                   overflow: TextOverflow.ellipsis,
                                                 ),
                                               ),
