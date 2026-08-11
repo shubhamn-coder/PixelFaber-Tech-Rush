@@ -2,9 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:flutter/services.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 import '../../services/api_service.dart';
 import '../../widgets/greendrop_native_logo.dart';
 import '../../widgets/google_logo_widget.dart';
@@ -36,6 +33,7 @@ class _AuthScreenState extends State<AuthScreen> {
   final _certUrlController = TextEditingController();
   final _panUrlController = TextEditingController();
   final _officeAddressController = TextEditingController();
+  final _adminSecretKeyController = TextEditingController();
 
   String? _trustDeedPath;
   String? _exemption80GPath;
@@ -182,6 +180,8 @@ class _AuthScreenState extends State<AuthScreen> {
           'panCardUrl': _panUrlController.text.trim(),
           'officeAddress': _officeAddressController.text.trim(),
         };
+      } else if (_role == 'ADMIN') {
+        body['adminSecretKey'] = _adminSecretKeyController.text.trim();
       }
     }
 
@@ -545,370 +545,6 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-  void _showGoogleAuthenticatorModal() {
-    final otpDigit1 = TextEditingController();
-    final otpDigit2 = TextEditingController();
-    final otpDigit3 = TextEditingController();
-    final otpDigit4 = TextEditingController();
-    final otpDigit5 = TextEditingController();
-    final otpDigit6 = TextEditingController();
-
-    final focus1 = FocusNode();
-    final focus2 = FocusNode();
-    final focus3 = FocusNode();
-    final focus4 = FocusNode();
-    final focus5 = FocusNode();
-    final focus6 = FocusNode();
-
-    bool isVerifying = false;
-    bool showSetupGuide = false;
-    int cycleSeconds = 30 - (DateTime.now().second % 30);
-    Timer? cycleTimer;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => StatefulBuilder(
-        builder: (modalContext, setModalState) {
-          cycleTimer ??= Timer.periodic(const Duration(seconds: 1), (timer) {
-            final newSeconds = 30 - (DateTime.now().second % 30);
-            if (modalContext.mounted) {
-              setModalState(() => cycleSeconds = newSeconds);
-            } else {
-              timer.cancel();
-            }
-          });
-
-          Future<void> launchStore() async {
-            final Uri url = Uri.parse('https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2');
-            if (await canLaunchUrl(url)) {
-              await launchUrl(url, mode: LaunchMode.externalApplication);
-            }
-          }
-
-          Future<void> verifyTotp() async {
-            final totpCode = '${otpDigit1.text}${otpDigit2.text}${otpDigit3.text}${otpDigit4.text}${otpDigit5.text}${otpDigit6.text}';
-            if (totpCode.length < 6) {
-              _showErrorSnackBar('Please enter the 6-digit Google Authenticator code');
-              return;
-            }
-
-            setModalState(() => isVerifying = true);
-
-            try {
-              final res = await ApiService.post('/auth/verify-authenticator', {
-                'totpCode': totpCode,
-                'role': _role,
-              });
-              final data = jsonDecode(res.body);
-
-              if (res.statusCode == 200 || res.statusCode == 201) {
-                if (!modalContext.mounted || !mounted) return;
-                cycleTimer?.cancel();
-                Navigator.pop(modalContext);
-
-                final userData = data['data'] as Map<String, dynamic>;
-                final int targetIndex = (userData['role'] == 'ADMIN') ? 10 : 0;
-
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: const Row(
-                      children: [
-                        Icon(Icons.verified_user_rounded, color: Colors.white, size: 18),
-                        SizedBox(width: 8),
-                        Text('✓ Google Authenticator Verified! Signed in successfully.'),
-                      ],
-                    ),
-                    backgroundColor: Colors.green.shade800,
-                  ),
-                );
-
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => MainHomeScreen(user: userData, initialIndex: targetIndex),
-                  ),
-                );
-                return;
-              }
-            } catch (_) {}
-
-            // Offline Demo Fallback
-            if (!modalContext.mounted || !mounted) return;
-            cycleTimer?.cancel();
-            Navigator.pop(modalContext);
-            _fillDemoAccount(_role);
-            _handleSubmit();
-          }
-
-          Widget buildDigitBox(
-            TextEditingController controller,
-            FocusNode currentFocus,
-            FocusNode? nextFocus,
-            FocusNode? prevFocus,
-          ) {
-            return SizedBox(
-              width: 44,
-              height: 52,
-              child: TextField(
-                controller: controller,
-                focusNode: currentFocus,
-                keyboardType: TextInputType.number,
-                textAlign: TextAlign.center,
-                maxLength: 1,
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                decoration: InputDecoration(
-                  counterText: '',
-                  filled: true,
-                  fillColor: Colors.grey.shade100,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 10),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide(color: Colors.blue.shade700, width: 2),
-                  ),
-                ),
-                onChanged: (val) {
-                  if (val.isNotEmpty && nextFocus != null) {
-                    FocusScope.of(context).requestFocus(nextFocus);
-                  } else if (val.isEmpty && prevFocus != null) {
-                    FocusScope.of(context).requestFocus(prevFocus);
-                  }
-                  if (otpDigit1.text.isNotEmpty &&
-                      otpDigit2.text.isNotEmpty &&
-                      otpDigit3.text.isNotEmpty &&
-                      otpDigit4.text.isNotEmpty &&
-                      otpDigit5.text.isNotEmpty &&
-                      otpDigit6.text.isNotEmpty) {
-                    verifyTotp();
-                  }
-                },
-              ),
-            );
-          }
-
-          return Container(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-              top: 24,
-              left: 24,
-              right: 24,
-            ),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.shade50,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const GoogleLogoWidget(size: 24),
-                    ),
-                    const SizedBox(width: 14),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Google Authenticator OTP',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0B2914)),
-                        ),
-                        Text(
-                          'Enter the 6-digit TOTP code from your Google Authenticator App',
-                          style: TextStyle(fontSize: 11.5, color: Colors.grey.shade600),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-
-                // 6-DIGIT TOTP INPUT BOXES
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    buildDigitBox(otpDigit1, focus1, focus2, null),
-                    buildDigitBox(otpDigit2, focus2, focus3, focus1),
-                    buildDigitBox(otpDigit3, focus3, focus4, focus2),
-                    buildDigitBox(otpDigit4, focus4, focus5, focus3),
-                    buildDigitBox(otpDigit5, focus5, focus6, focus4),
-                    buildDigitBox(otpDigit6, focus6, null, focus5),
-                  ],
-                ),
-                const SizedBox(height: 12),
-
-                // 30s ROTATION TIMER
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(
-                        value: cycleSeconds / 30,
-                        strokeWidth: 2,
-                        color: Colors.blue.shade700,
-                        backgroundColor: Colors.grey.shade200,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Code refreshes in Google Authenticator in ${cycleSeconds}s',
-                      style: TextStyle(fontSize: 11.5, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 18),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 50),
-                    backgroundColor: Colors.blue.shade800,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  onPressed: isVerifying ? null : verifyTotp,
-                  child: isVerifying
-                      ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.shield_rounded, color: Colors.white, size: 18),
-                            SizedBox(width: 8),
-                            Text('Verify Authenticator Code', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
-                          ],
-                        ),
-                ),
-
-                const SizedBox(height: 16),
-                const Divider(height: 1),
-                const SizedBox(height: 10),
-
-                // TOGGLE GUIDANCE & DOWNLOAD GOOGLE AUTHENTICATOR
-                GestureDetector(
-                  onTap: () => setModalState(() => showSetupGuide = !showSetupGuide),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(Icons.help_outline_rounded, size: 16, color: Colors.blue.shade800),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Don\'t have Google Authenticator installed?',
-                              style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Colors.blue.shade900),
-                            ),
-                          ],
-                        ),
-                        Icon(
-                          showSetupGuide ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
-                          color: Colors.blue.shade900,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                if (showSetupGuide) ...[
-                  const SizedBox(height: 10),
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.shade50.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.blue.shade200),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        OutlinedButton.icon(
-                          style: OutlinedButton.styleFrom(
-                            minimumSize: const Size(double.infinity, 44),
-                            side: BorderSide(color: Colors.blue.shade700, width: 1.2),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                            backgroundColor: Colors.white,
-                          ),
-                          icon: const GoogleLogoWidget(size: 18),
-                          label: Text(
-                            'Download Google Authenticator App',
-                            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue.shade900, fontSize: 13),
-                          ),
-                          onPressed: launchStore,
-                        ),
-                        const SizedBox(height: 14),
-
-                        Center(
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.grey.shade300),
-                            ),
-                            child: QrImageView(
-                              data: 'otpauth://totp/GreenDrop:shriram@greendrop.org?secret=GREENDROP2026TOTPSECRET&issuer=GreenDrop',
-                              version: QrVersions.auto,
-                              size: 130.0,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text('Setup Secret Key: ', style: TextStyle(fontSize: 11, color: Colors.grey.shade700)),
-                            const SelectableText(
-                              'GREENDROP2026TOTPSECRET',
-                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.5),
-                            ),
-                            const SizedBox(width: 6),
-                            InkWell(
-                              onTap: () {
-                                Clipboard.setData(const ClipboardData(text: 'GREENDROP2026TOTPSECRET'));
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Secret key copied to clipboard!')),
-                                );
-                              },
-                              child: Icon(Icons.copy_rounded, size: 14, color: Colors.blue.shade800),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-
   @override
   void dispose() {
     _emailController.dispose();
@@ -920,6 +556,7 @@ class _AuthScreenState extends State<AuthScreen> {
     _certUrlController.dispose();
     _panUrlController.dispose();
     _officeAddressController.dispose();
+    _adminSecretKeyController.dispose();
     super.dispose();
   }
 
@@ -1293,30 +930,98 @@ class _AuthScreenState extends State<AuthScreen> {
         const Text(
           'Welcome Back 👋',
           style: TextStyle(
-            fontSize: 20,
+            fontSize: 22,
             fontWeight: FontWeight.w800,
             color: Color(0xFF0B2914),
+            letterSpacing: -0.3,
           ),
         ),
         const SizedBox(height: 4),
         Text(
-          'Enter your email and password to access your GreenDrop profile.',
-          style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600),
+          'Sign in to access your donation dashboard, verified drives & relief tracking.',
+          style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600, height: 1.3),
         ),
         const SizedBox(height: 20),
 
+        // PROMINENT GOOGLE QUICK SIGN-IN HERO BUTTON
+        OutlinedButton(
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size(double.infinity, 50),
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            side: BorderSide(color: Colors.grey.shade300, width: 1.2),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            backgroundColor: Colors.white,
+            elevation: 1,
+            shadowColor: Colors.black.withValues(alpha: 0.05),
+          ),
+          onPressed: _showGoogleSignInModal,
+          child: const Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              GoogleLogoWidget(size: 20),
+              SizedBox(width: 10),
+              Text(
+                'Continue with Google',
+                style: TextStyle(
+                  color: Colors.black87,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14.5,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+
+        Row(
+          children: [
+            Expanded(child: Divider(color: Colors.grey.shade300)),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Text(
+                'OR SIGN IN WITH EMAIL',
+                style: TextStyle(fontSize: 11, color: Colors.grey.shade500, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+              ),
+            ),
+            Expanded(child: Divider(color: Colors.grey.shade300)),
+          ],
+        ),
+        const SizedBox(height: 18),
+
+        // DEMO QUICK-FILL ROLE PILLS
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              '1-Tap Demo Sign-In:',
+              style: TextStyle(fontSize: 11.5, color: Colors.grey.shade700, fontWeight: FontWeight.w600),
+            ),
+            Row(
+              children: [
+                _buildDemoPill('DONOR', 'Donor', Colors.green.shade700),
+                const SizedBox(width: 6),
+                _buildDemoPill('NGO', 'NGO', Colors.blue.shade700),
+                const SizedBox(width: 6),
+                _buildDemoPill('ADMIN', 'Admin', Colors.purple.shade700),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+
         _buildInputField(
           controller: _emailController,
-          label: 'Email Address',
+          label: 'Email Address *',
           hint: 'name@example.com',
           icon: Icons.email_outlined,
           keyboardType: TextInputType.emailAddress,
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
 
         _buildInputField(
           controller: _passwordController,
-          label: 'Password',
+          label: 'Password *',
           hint: '••••••••',
           icon: Icons.lock_outline_rounded,
           obscureText: _obscurePassword,
@@ -1329,7 +1034,7 @@ class _AuthScreenState extends State<AuthScreen> {
             onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
 
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1346,7 +1051,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     onChanged: (val) => setState(() => _rememberMe = val ?? true),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 Text(
                   'Remember me',
                   style: TextStyle(fontSize: 12.5, color: Colors.grey.shade700, fontWeight: FontWeight.w500),
@@ -1371,55 +1076,25 @@ class _AuthScreenState extends State<AuthScreen> {
             ),
           ],
         ),
-
-        const SizedBox(height: 16),
-
-        Row(
-          children: [
-            Expanded(child: Divider(color: Colors.grey.shade300)),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              child: Text(
-                'OR QUICK SIGN IN',
-                style: TextStyle(fontSize: 11, color: Colors.grey.shade500, fontWeight: FontWeight.w600),
-              ),
-            ),
-            Expanded(child: Divider(color: Colors.grey.shade300)),
-          ],
-        ),
-        const SizedBox(height: 14),
-
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 11),
-                  side: BorderSide(color: Colors.grey.shade300),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                icon: const GoogleLogoWidget(size: 18),
-                label: const Text('Google Sign-In', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600, fontSize: 12.5)),
-                onPressed: _showGoogleSignInModal,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 11),
-                  side: BorderSide(color: Colors.blue.shade300),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  backgroundColor: Colors.blue.shade50.withValues(alpha: 0.2),
-                ),
-                icon: Icon(Icons.shield_outlined, color: Colors.blue.shade800, size: 18),
-                label: Text('Google Authenticator', style: TextStyle(color: Colors.blue.shade900, fontWeight: FontWeight.w700, fontSize: 12.5)),
-                onPressed: _showGoogleAuthenticatorModal,
-              ),
-            ),
-          ],
-        ),
       ],
+    );
+  }
+
+  Widget _buildDemoPill(String roleKey, String label, Color color) {
+    return GestureDetector(
+      onTap: () => _fillDemoAccount(roleKey),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: color.withValues(alpha: 0.4)),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: color),
+        ),
+      ),
     );
   }
 
@@ -1445,22 +1120,35 @@ class _AuthScreenState extends State<AuthScreen> {
 
         _buildSectionHeader('1. Select Account Type', Icons.manage_accounts_outlined),
         const SizedBox(height: 10),
-        Row(
+        Column(
           children: [
-            _buildRoleSelectionCard(
-              roleKey: 'DONOR',
-              title: 'Individual Donor',
-              subtitle: 'Donate food, clothes & relief items',
-              icon: Icons.volunteer_activism_rounded,
-              accentColor: Colors.green.shade700,
+            Row(
+              children: [
+                _buildRoleSelectionCard(
+                  roleKey: 'DONOR',
+                  title: 'Individual Donor',
+                  subtitle: 'Donate food & clothes',
+                  icon: Icons.volunteer_activism_rounded,
+                  accentColor: Colors.green.shade700,
+                ),
+                const SizedBox(width: 10),
+                _buildRoleSelectionCard(
+                  roleKey: 'NGO',
+                  title: 'Registered NGO',
+                  subtitle: 'Receive aid & drives',
+                  icon: Icons.assured_workload_rounded,
+                  accentColor: Colors.blue.shade700,
+                ),
+              ],
             ),
-            const SizedBox(width: 10),
+            const SizedBox(height: 8),
             _buildRoleSelectionCard(
-              roleKey: 'NGO',
-              title: 'Registered NGO',
-              subtitle: 'Receive aid & verify relief drives',
-              icon: Icons.assured_workload_rounded,
-              accentColor: Colors.blue.shade700,
+              roleKey: 'ADMIN',
+              title: 'System Admin',
+              subtitle: 'Manage NGO verifications & platform operations',
+              icon: Icons.admin_panel_settings_rounded,
+              accentColor: Colors.purple.shade700,
+              fullWidth: true,
             ),
           ],
         ),
@@ -1526,6 +1214,19 @@ class _AuthScreenState extends State<AuthScreen> {
           ),
         ),
         const SizedBox(height: 20),
+
+        if (_role == 'ADMIN') ...[
+          _buildSectionHeader('4. Admin Security Authorization', Icons.admin_panel_settings_outlined),
+          const SizedBox(height: 10),
+          _buildInputField(
+            controller: _adminSecretKeyController,
+            label: 'Admin Authorization Secret Key *',
+            hint: 'Enter admin security key',
+            icon: Icons.key_outlined,
+            obscureText: true,
+          ),
+          const SizedBox(height: 20),
+        ],
 
         if (_role == 'NGO') ...[
           _buildSectionHeader('4. NGO Verification & Trust Credentials', Icons.verified_user_outlined),
@@ -1715,66 +1416,66 @@ class _AuthScreenState extends State<AuthScreen> {
     required String subtitle,
     required IconData icon,
     required Color accentColor,
+    bool fullWidth = false,
   }) {
     final isSelected = _role == roleKey;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => setState(() => _role = roleKey),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: isSelected ? accentColor.withValues(alpha: 0.08) : const Color(0xFFFAFAFA),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: isSelected ? accentColor : Colors.grey.shade300,
-              width: isSelected ? 2 : 1,
+    final cardWidget = GestureDetector(
+      onTap: () => setState(() => _role = roleKey),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isSelected ? accentColor.withValues(alpha: 0.08) : const Color(0xFFFAFAFA),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isSelected ? accentColor : Colors.grey.shade300,
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: isSelected ? accentColor : Colors.grey.shade300,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, size: 18, color: Colors.white),
+                ),
+                Icon(
+                  isSelected ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                  color: isSelected ? accentColor : Colors.grey.shade400,
+                  size: 18,
+                ),
+              ],
             ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: isSelected ? accentColor : Colors.grey.shade300,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(icon, size: 18, color: Colors.white),
-                  ),
-                  Icon(
-                    isSelected ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
-                    color: isSelected ? accentColor : Colors.grey.shade400,
-                    size: 18,
-                  ),
-                ],
+            const SizedBox(height: 10),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: isSelected ? accentColor : Colors.black87,
               ),
-              const SizedBox(height: 10),
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  color: isSelected ? accentColor : Colors.black87,
-                ),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              subtitle,
+              style: TextStyle(
+                fontSize: 10.5,
+                color: Colors.grey.shade600,
+                height: 1.2,
               ),
-              const SizedBox(height: 3),
-              Text(
-                subtitle,
-                style: TextStyle(
-                  fontSize: 10.5,
-                  color: Colors.grey.shade600,
-                  height: 1.2,
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
+    return fullWidth ? cardWidget : Expanded(child: cardWidget);
   }
 
   Widget _buildDocUploadCard({
