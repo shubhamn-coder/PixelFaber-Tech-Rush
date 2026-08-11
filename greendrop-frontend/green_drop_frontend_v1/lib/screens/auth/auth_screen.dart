@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../services/api_service.dart';
 import '../../widgets/greendrop_native_logo.dart';
+import '../../widgets/google_logo_widget.dart';
 import '../home/main_home_screen.dart';
 
 class AuthScreen extends StatefulWidget {
@@ -348,6 +349,313 @@ class _AuthScreenState extends State<AuthScreen> {
               child: const Text('Send Reset Instructions', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  void _showGoogleSignInModal() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                const GoogleLogoWidget(size: 24),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Sign in with Google',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey.shade900,
+                      ),
+                    ),
+                    Text(
+                      'Choose a Google Account to continue to GreenDrop',
+                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            const Divider(height: 1),
+            const SizedBox(height: 12),
+
+            _buildGoogleAccountTile(
+              name: 'Shriram Tambolkar',
+              email: 'shriram.donor@gmail.com',
+              avatarText: 'S',
+              avatarColor: Colors.teal.shade700,
+              roleBadge: 'Donor',
+              onTap: () {
+                Navigator.pop(context);
+                _fillDemoAccount('DONOR');
+                _emailController.text = 'shriram.donor@gmail.com';
+                _handleSubmit();
+              },
+            ),
+            const SizedBox(height: 10),
+
+            _buildGoogleAccountTile(
+              name: 'SAMS Relief Network',
+              email: 'ngo.samsrelief@gmail.com',
+              avatarText: 'S',
+              avatarColor: Colors.blue.shade800,
+              roleBadge: 'Verified NGO',
+              onTap: () {
+                Navigator.pop(context);
+                _fillDemoAccount('NGO');
+                _emailController.text = 'ngo.samsrelief@gmail.com';
+                _handleSubmit();
+              },
+            ),
+            const SizedBox(height: 10),
+
+            _buildGoogleAccountTile(
+              name: 'Platform System Admin',
+              email: 'admin.greendrop@gmail.com',
+              avatarText: 'A',
+              avatarColor: Colors.orange.shade800,
+              roleBadge: 'Admin',
+              onTap: () {
+                Navigator.pop(context);
+                _fillDemoAccount('ADMIN');
+                _emailController.text = 'admin.greendrop@gmail.com';
+                _handleSubmit();
+              },
+            ),
+
+            const SizedBox(height: 14),
+            const Divider(height: 1),
+            const SizedBox(height: 12),
+
+            InkWell(
+              onTap: () {
+                Navigator.pop(context);
+                _fillDemoAccount('DONOR');
+                _handleSubmit();
+              },
+              borderRadius: BorderRadius.circular(12),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                child: Row(
+                  children: [
+                    Icon(Icons.person_add_outlined, size: 20, color: Colors.grey.shade700),
+                    const SizedBox(width: 14),
+                    Text(
+                      'Use another Google account',
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey.shade800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGoogleAccountTile({
+    required String name,
+    required String email,
+    required String avatarText,
+    required Color avatarColor,
+    required String roleBadge,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: ListTile(
+        onTap: onTap,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+        leading: CircleAvatar(
+          backgroundColor: avatarColor,
+          radius: 20,
+          child: Text(
+            avatarText,
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+        ),
+        title: Row(
+          children: [
+            Text(
+              name,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: avatarColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                roleBadge,
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: avatarColor),
+              ),
+            ),
+          ],
+        ),
+        subtitle: Text(
+          email,
+          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+        ),
+        trailing: const Icon(Icons.chevron_right_rounded, color: Colors.grey),
+      ),
+    );
+  }
+
+  void _showPhoneOtpModal() {
+    final phoneController = TextEditingController(text: '+91 9876543210');
+    final otpController = TextEditingController(text: '123456');
+    bool isOtpSent = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => Container(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+            top: 24,
+            left: 24,
+            right: 24,
+          ),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade50,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.phone_android_rounded, color: Colors.green.shade800, size: 24),
+                  ),
+                  const SizedBox(width: 14),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Phone OTP Quick Sign-In',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0B2914)),
+                      ),
+                      Text(
+                        isOtpSent ? 'Enter 6-digit OTP sent to your phone' : 'Enter mobile number for instant OTP verification',
+                        style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              if (!isOtpSent) ...[
+                TextField(
+                  controller: phoneController,
+                  keyboardType: TextInputType.phone,
+                  decoration: InputDecoration(
+                    labelText: 'Mobile Number',
+                    prefixIcon: const Icon(Icons.phone),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 50),
+                    backgroundColor: Colors.green.shade800,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: () {
+                    setModalState(() => isOtpSent = true);
+                  },
+                  child: const Text('Send Verification OTP', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
+                ),
+              ] else ...[
+                TextField(
+                  controller: otpController,
+                  keyboardType: TextInputType.number,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 22, letterSpacing: 8, fontWeight: FontWeight.bold),
+                  decoration: InputDecoration(
+                    labelText: '6-Digit Verification OTP',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 50),
+                    backgroundColor: Colors.green.shade800,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _fillDemoAccount('DONOR');
+                    _handleSubmit();
+                  },
+                  child: const Text('Verify OTP & Sign In', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );
@@ -842,12 +1150,9 @@ class _AuthScreenState extends State<AuthScreen> {
                   side: BorderSide(color: Colors.grey.shade300),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-                icon: const Icon(Icons.g_mobiledata_rounded, color: Colors.red, size: 22),
+                icon: const GoogleLogoWidget(size: 18),
                 label: const Text('Google', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600, fontSize: 13)),
-                onPressed: () {
-                  _fillDemoAccount('DONOR');
-                  _handleSubmit();
-                },
+                onPressed: _showGoogleSignInModal,
               ),
             ),
             const SizedBox(width: 10),
@@ -860,10 +1165,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
                 icon: Icon(Icons.phone_android_rounded, color: Colors.green.shade800, size: 18),
                 label: const Text('Phone OTP', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600, fontSize: 13)),
-                onPressed: () {
-                  _fillDemoAccount('NGO');
-                  _handleSubmit();
-                },
+                onPressed: _showPhoneOtpModal,
               ),
             ),
           ],
