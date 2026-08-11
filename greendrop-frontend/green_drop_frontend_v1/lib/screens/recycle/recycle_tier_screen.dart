@@ -416,7 +416,7 @@ class _RecycleTierScreenState extends State<RecycleTierScreen> {
         child: Column(
           children: [
             // 1. HERO ANIMATED RECYCLE MARKETPLACE BANNER
-            AnimatedRecycleBanner(onPostPressed: _showPostRecycleItemDialog),
+            const AnimatedRecycleBanner(),
 
             // 2. ZERO-WASTE STATS TOOLBAR
             Container(
@@ -720,63 +720,38 @@ class _AnimatedRecycleBannerState extends State<AnimatedRecycleBanner> with Sing
           ),
         ],
       ),
-      child: Column(
+      child: Row(
         children: [
-          Row(
-            children: [
-              RotationTransition(
-                turns: _ctrl,
-                child: const Icon(Icons.recycling_rounded, size: 44, color: Colors.tealAccent),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      '♻️ Zero-Landfill Recycle & Upcycle Hub',
-                      style: TextStyle(
-                        color: Colors.tealAccent,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 14,
-                        letterSpacing: 0.3,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      'Connecting Donors & NGOs to certified textile shredders, e-waste centers & upcycling artisans.',
-                      style: TextStyle(
-                        color: Colors.teal.shade100,
-                        fontSize: 11.5,
-                        height: 1.3,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          RotationTransition(
+            turns: _ctrl,
+            child: const Icon(Icons.recycling_rounded, size: 44, color: Colors.tealAccent),
           ),
-          if (widget.onPostPressed != null) ...[
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.tealAccent,
-                  foregroundColor: const Color(0xFF00332C),
-                  elevation: 2,
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  '♻️ Zero-Landfill Recycle & Upcycle Hub',
+                  style: TextStyle(
+                    color: Colors.tealAccent,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                    letterSpacing: 0.3,
+                  ),
                 ),
-                icon: const Icon(Icons.add_circle_rounded, size: 18),
-                label: const Text(
-                  '+ Post Worn-Out Product for Recycling',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5),
+                const SizedBox(height: 3),
+                Text(
+                  'Connecting Donors & NGOs to certified textile shredders, e-waste centers & upcycling artisans.',
+                  style: TextStyle(
+                    color: Colors.teal.shade100,
+                    fontSize: 11.5,
+                    height: 1.3,
+                  ),
                 ),
-                onPressed: widget.onPostPressed,
-              ),
+              ],
             ),
-          ],
+          ),
         ],
       ),
     );
