@@ -675,15 +675,22 @@ class _AuthScreenState extends State<AuthScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        gradient: LinearGradient(
+          colors: [
+            const Color(0xFF1B5E30).withValues(alpha: 0.90),
+            const Color(0xFF0F4220).withValues(alpha: 0.95),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: const Color(0xFFC8E6C9),
+          color: const Color(0xFF81C784).withValues(alpha: 0.5),
           width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.12),
+            color: Colors.black.withValues(alpha: 0.3),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -695,24 +702,24 @@ class _AuthScreenState extends State<AuthScreen> {
             size: 70,
             animate: true,
             showText: true,
-            textColor: Color(0xFF0B3B1B),
+            textColor: Colors.white,
           ),
           const SizedBox(height: 10),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
             decoration: BoxDecoration(
-              color: const Color(0xFFE8F5E9),
+              color: Colors.black.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFFA5D6A7)),
+              border: Border.all(color: const Color(0xFF81C784).withValues(alpha: 0.4)),
             ),
             child: const Text(
               'Where giving back becomes second nature',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: Color(0xFF1B5E20),
+                color: Color(0xFFE8F5E9),
                 fontSize: 12.5,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 0.2,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.3,
               ),
             ),
           ),
@@ -722,26 +729,26 @@ class _AuthScreenState extends State<AuthScreen> {
             spacing: 8,
             runSpacing: 8,
             children: [
-              _buildBrightFeatureBadge(
+              _buildEcoFeatureBadge(
                 icon: Icons.eco,
                 label: 'Zero Waste Network',
-                badgeColor: const Color(0xFF2E7D32),
-                bgColor: const Color(0xFFE8F5E9),
-                borderColor: const Color(0xFFA5D6A7),
+                badgeColor: const Color(0xFFA5D6A7),
+                bgColor: const Color(0xFF0F361A),
+                borderColor: const Color(0xFF4CAF50),
               ),
-              _buildBrightFeatureBadge(
+              _buildEcoFeatureBadge(
                 icon: Icons.warning_amber_rounded,
                 label: 'Disaster Relief',
-                badgeColor: const Color(0xFFE65100),
-                bgColor: const Color(0xFFFFF8E1),
-                borderColor: const Color(0xFFFFE082),
+                badgeColor: const Color(0xFFFFD54F),
+                bgColor: const Color(0xFF38230B),
+                borderColor: const Color(0xFFFFA726),
               ),
-              _buildBrightFeatureBadge(
+              _buildEcoFeatureBadge(
                 icon: Icons.verified_user_rounded,
                 label: 'Verified NGO Hub',
-                badgeColor: const Color(0xFF1565C0),
-                bgColor: const Color(0xFFE3F2FD),
-                borderColor: const Color(0xFF90CAF9),
+                badgeColor: const Color(0xFF90CAF9),
+                bgColor: const Color(0xFF0D2740),
+                borderColor: const Color(0xFF42A5F5),
               ),
             ],
           ),
@@ -750,7 +757,7 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-  Widget _buildBrightFeatureBadge({
+  Widget _buildEcoFeatureBadge({
     required IconData icon,
     required String label,
     required Color badgeColor,
@@ -758,7 +765,7 @@ class _AuthScreenState extends State<AuthScreen> {
     required Color borderColor,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(20),
@@ -768,7 +775,7 @@ class _AuthScreenState extends State<AuthScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 14, color: badgeColor),
-          const SizedBox(width: 5),
+          const SizedBox(width: 6),
           Text(
             label,
             style: TextStyle(
