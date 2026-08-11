@@ -563,22 +563,23 @@ class _AuthScreenState extends State<AuthScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F6F3),
+      backgroundColor: const Color(0xFF072114),
       body: Stack(
         children: [
-          // 1. TOP AMBIENT ECO GRADIENT BACKDROP
+          // 1. FULL-SCREEN ECO GREEN GRADIENT BACKDROP
           Container(
-            height: 380,
+            height: double.infinity,
             width: double.infinity,
             decoration: const BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  Color(0xFF072114),
-                  Color(0xFF13422A),
-                  Color(0xFF2E7D32),
+                  Color(0xFF05180E),
+                  Color(0xFF0D331D),
+                  Color(0xFF1B5A33),
+                  Color(0xFF0A2B18),
                 ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
               ),
             ),
           ),
@@ -588,8 +589,8 @@ class _AuthScreenState extends State<AuthScreen> {
             top: -40,
             right: -40,
             child: Container(
-              width: 220,
-              height: 220,
+              width: 260,
+              height: 260,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
@@ -633,11 +634,11 @@ class _AuthScreenState extends State<AuthScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.shield_outlined, size: 14, color: Colors.grey.shade600),
-                          const SizedBox(width: 5),
-                          Text(
+                          const Icon(Icons.shield_outlined, size: 14, color: Color(0xFF81C784)),
+                          const SizedBox(width: 6),
+                          const Text(
                             'GreenDrop Security • 256-bit Encrypted Aid Platform',
-                            style: TextStyle(fontSize: 11, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
+                            style: TextStyle(fontSize: 11, color: Colors.white70, fontWeight: FontWeight.w500),
                           ),
                         ],
                       ),
@@ -928,7 +929,7 @@ class _AuthScreenState extends State<AuthScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Welcome to GreenDrop App 👋',
+          'Welcome to GreenDrop 👋',
           style: TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.w800,
