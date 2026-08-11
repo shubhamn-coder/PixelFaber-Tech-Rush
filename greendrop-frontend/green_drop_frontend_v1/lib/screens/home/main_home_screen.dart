@@ -393,14 +393,6 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
                   setState(() => _currentIndex = 8);
                 },
               ),
-            ListTile(
-              leading: const Icon(Icons.smart_toy, color: Colors.green),
-              title: const Text('AI HelpBot'),
-              onTap: () {
-                Navigator.pop(context);
-                setState(() => _currentIndex = 9);
-              },
-            ),
             if (isAdmin)
               ListTile(
                 leading: const Icon(Icons.admin_panel_settings, color: Colors.purple),
