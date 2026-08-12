@@ -208,10 +208,12 @@ class _RecycleTierScreenState extends State<RecycleTierScreen> {
     final locationCtrl = TextEditingController(text: widget.user['address'] ?? 'Kothrud, Pune, MH');
     String category = 'TEXTILES';
 
+    final parentContext = context;
+
     showDialog(
-      context: context,
-      builder: (c) => StatefulBuilder(
-        builder: (context, setModalState) {
+      context: parentContext,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (modalContext, setModalState) {
           return AlertDialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             title: const Text(
@@ -301,7 +303,7 @@ class _RecycleTierScreenState extends State<RecycleTierScreen> {
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(c),
+                onPressed: () => Navigator.of(dialogContext).pop(),
                 child: Text(
                   'Cancel',
                   style: TextStyle(color: Colors.green.shade900, fontWeight: FontWeight.bold, fontSize: 15),
@@ -319,8 +321,11 @@ class _RecycleTierScreenState extends State<RecycleTierScreen> {
                   final weightStr = weightCtrl.text.trim();
 
                   if (matName.isEmpty || weightStr.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Please enter both Material Name and Weight of Material!')),
+                    ScaffoldMessenger.of(parentContext).showSnackBar(
+                      const SnackBar(
+                        content: Text('Please enter both Material Name and Weight of Material!'),
+                        duration: Duration(seconds: 2),
+                      ),
                     );
                     return;
                   }
@@ -348,18 +353,21 @@ class _RecycleTierScreenState extends State<RecycleTierScreen> {
                     'status': 'AVAILABLE',
                   };
 
-                  // 1. Immediately pop dialog & update local UI state
-                  Navigator.pop(c);
-                  _userCreatedRecycleItems.insert(0, newItem);
+                  // 1. Immediately pop dialog safely
+                  Navigator.of(dialogContext).pop();
 
+                  // 2. Prepend item & trigger setState
+                  _userCreatedRecycleItems.insert(0, newItem);
                   setState(() {
                     _selectedCategory = 'ALL';
                     _recycleItems.insert(0, newItem);
                   });
 
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  // 3. Show success notification on parent ScaffoldContext
+                  ScaffoldMessenger.of(parentContext).showSnackBar(
                     SnackBar(
                       backgroundColor: const Color(0xFF2E7D32),
+                      duration: const Duration(seconds: 3),
                       content: Row(
                         children: [
                           const Icon(Icons.check_circle, color: Colors.white),
@@ -375,7 +383,7 @@ class _RecycleTierScreenState extends State<RecycleTierScreen> {
                     ),
                   );
 
-                  // 2. Post to backend in background (non-blocking)
+                  // 4. Background non-blocking API call
                   ApiService.post('/donations', {
                     'title': displayTitle,
                     'category': category,
