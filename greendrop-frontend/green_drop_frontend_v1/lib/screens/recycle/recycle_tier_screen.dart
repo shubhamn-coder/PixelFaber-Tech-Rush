@@ -422,107 +422,111 @@ class _RecycleTierScreenState extends State<RecycleTierScreen> {
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
         ),
       ),
-      body: RefreshIndicator(
-        onRefresh: _fetchRecycleItems,
-        color: Colors.teal.shade800,
-        child: Column(
-          children: [
-            // 1. HERO ANIMATED RECYCLE MARKETPLACE BANNER
-            const AnimatedRecycleBanner(),
+      body: Column(
+        children: [
+          // 1. HERO ANIMATED RECYCLE MARKETPLACE BANNER
+          const AnimatedRecycleBanner(),
 
-            // 2. ZERO-WASTE STATS TOOLBAR
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 14),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Colors.teal.shade100),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _StatWidget(icon: Icons.scale_outlined, value: '1,420 kg', label: 'Landfill Diverted'),
-                  _StatWidget(icon: Icons.energy_savings_leaf_outlined, value: '98.4%', label: 'Recycle Rate'),
-                  _StatWidget(icon: Icons.co2_outlined, value: '3.5 Tons', label: 'CO₂ Prevented'),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 8),
-
-            // 2.5 INLINE POST ACTION BUTTON
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1B5E20),
-                    foregroundColor: Colors.white,
-                    elevation: 2,
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
-                  label: const Text(
-                    '➕ Post Material for Recycling',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                  ),
-                  onPressed: _showPostRecycleItemDialog,
+          // 2. ZERO-WASTE STATS TOOLBAR
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.teal.shade100),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
                 ),
+              ],
+            ),
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _StatWidget(icon: Icons.scale_outlined, value: '1,420 kg', label: 'Landfill Diverted'),
+                _StatWidget(icon: Icons.energy_savings_leaf_outlined, value: '98.4%', label: 'Recycle Rate'),
+                _StatWidget(icon: Icons.co2_outlined, value: '3.5 Tons', label: 'CO₂ Prevented'),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          // 2.5 INLINE POST ACTION BUTTON
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF1B5E20),
+                  foregroundColor: Colors.white,
+                  elevation: 2,
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
+                label: const Text(
+                  '➕ Post Material for Recycling',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                ),
+                onPressed: _showPostRecycleItemDialog,
               ),
             ),
+          ),
 
-            const SizedBox(height: 10),
+          const SizedBox(height: 10),
 
-            // 3. CATEGORY CHIPS BAR
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              child: Row(
-                children: [
-                  _buildCategoryChip('ALL', 'All Scraps ♻️'),
-                  const SizedBox(width: 8),
-                  _buildCategoryChip('TEXTILES', 'Textiles 👕'),
-                  const SizedBox(width: 8),
-                  _buildCategoryChip('E-WASTE', 'E-Waste 💻'),
-                  const SizedBox(width: 8),
-                  _buildCategoryChip('PAPER & PACKAGING', 'Paper 📦'),
-                  const SizedBox(width: 8),
-                  _buildCategoryChip('ARTISAN UPCYCLE', 'Upcycle 🎨'),
-                ],
-              ),
+          // 3. CATEGORY CHIPS BAR
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: Row(
+              children: [
+                _buildCategoryChip('ALL', 'All Scraps ♻️'),
+                const SizedBox(width: 8),
+                _buildCategoryChip('TEXTILES', 'Textiles 👕'),
+                const SizedBox(width: 8),
+                _buildCategoryChip('E-WASTE', 'E-Waste 💻'),
+                const SizedBox(width: 8),
+                _buildCategoryChip('PAPER & PACKAGING', 'Paper 📦'),
+                const SizedBox(width: 8),
+                _buildCategoryChip('ARTISAN UPCYCLE', 'Upcycle 🎨'),
+              ],
             ),
+          ),
 
-            const SizedBox(height: 10),
+          const SizedBox(height: 10),
 
-            // 4. RECYCLE BATCH LIST
-            Expanded(
+          // 4. RECYCLE BATCH LIST WITH REFRESH INDICATOR
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: _fetchRecycleItems,
+              color: Colors.teal.shade800,
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator(color: Colors.teal))
                   : filteredItems.isEmpty
                       ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                          child: ListView(
+                            physics: const AlwaysScrollableScrollPhysics(),
                             children: [
+                              const SizedBox(height: 40),
                               Icon(Icons.recycling, size: 50, color: Colors.teal.shade200),
                               const SizedBox(height: 10),
-                              Text(
-                                'No batches currently listed under $_selectedCategory.',
-                                style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.bold),
+                              Center(
+                                child: Text(
+                                  'No batches currently listed under $_selectedCategory.',
+                                  style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.bold),
+                                ),
                               ),
                             ],
                           ),
                         )
                       : ListView.builder(
+                          physics: const AlwaysScrollableScrollPhysics(),
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                           itemCount: filteredItems.length,
                           itemBuilder: (c, i) {
@@ -659,8 +663,8 @@ class _RecycleTierScreenState extends State<RecycleTierScreen> {
                           },
                         ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
