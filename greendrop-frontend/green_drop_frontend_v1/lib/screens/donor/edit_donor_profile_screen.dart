@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
 
@@ -40,6 +41,7 @@ class _EditDonorProfileScreenState extends State<EditDonorProfileScreen> {
       });
 
       if (res.statusCode == 200) {
+        final data = jsonDecode(res.body)['data'] ?? {};
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -47,6 +49,7 @@ class _EditDonorProfileScreenState extends State<EditDonorProfileScreen> {
             content: Text('🎉 Donor Profile & Details updated successfully!'),
           ),
         );
+        Navigator.pop(context, data);
       } else {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(

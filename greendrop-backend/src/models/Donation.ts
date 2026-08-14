@@ -15,6 +15,8 @@ export interface IDonation extends Document {
       coordinates: [number, number];
     };
   };
+  isRecycleItem?: boolean;
+  quantity?: string;
   status: 'AVAILABLE' | 'REQUESTED' | 'ACCEPTED' | 'CODE_VERIFIED' | 'COURIER_DISPATCHED' | 'COMPLETED' | 'COLLECTED';
   requestedByNgoId?: string;
   requestedByNgoName?: string;
@@ -40,6 +42,8 @@ const donationSchema = new Schema<IDonation>(
     condition: { type: String, required: true },
     weightKg: { type: Number, required: true },
     photoUrls: { type: [String], default: [] },
+    isRecycleItem: { type: Boolean, default: false },
+    quantity: { type: String, default: '1 lot' },
     address: {
       formattedAddress: { type: String, required: true },
       location: {

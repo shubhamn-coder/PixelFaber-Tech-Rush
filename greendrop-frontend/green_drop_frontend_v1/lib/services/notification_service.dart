@@ -1,6 +1,24 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
+class ChatNotificationItem {
+  final String id;
+  final String title;
+  final String body;
+  final String type;
+  final DateTime timestamp;
+  bool isRead;
+
+  ChatNotificationItem({
+    required this.id,
+    required this.title,
+    required this.body,
+    required this.type,
+    required this.timestamp,
+    this.isRead = false,
+  });
+}
+
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
   factory NotificationService() => _instance;
@@ -10,6 +28,32 @@ class NotificationService {
       FlutterLocalNotificationsPlugin();
 
   bool _initialized = false;
+  static final List<ChatNotificationItem> liveNotifications = [];
+
+  bool get hasUnread => liveNotifications.any((n) => !n.isRead);
+
+  void markAllRead() {
+    for (var n in liveNotifications) {
+      n.isRead = true;
+    }
+  }
+
+  void addChatNotification({required String title, required String body}) {
+    final item = ChatNotificationItem(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      title: title,
+      body: body,
+      type: 'CHAT',
+      timestamp: DateTime.now(),
+      isRead: false,
+    );
+    liveNotifications.insert(0, item);
+    showNotification(
+      id: liveNotifications.length,
+      title: title,
+      body: body,
+    );
+  }
 
   Future<void> init() async {
     if (_initialized) return;
@@ -64,7 +108,6 @@ class NotificationService {
         notificationDetails,
       );
     } catch (e) {
-      // Fallback log if notifications are blocked or running in desktop/web environment
       debugPrint('Native notification trigger: $title - $body ($e)');
     }
   }

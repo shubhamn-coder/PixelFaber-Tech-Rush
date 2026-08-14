@@ -12,6 +12,7 @@ import '../../widgets/report_dialog.dart';
 import '../../widgets/shimmer_placeholder.dart';
 import '../chat/chat_screen.dart';
 import '../ngo/ngo_requirements_screen.dart';
+import '../recycle/recycle_tier_screen.dart';
 
 class BrowseDonationsFeed extends StatefulWidget {
   final Map<String, dynamic> user;
@@ -300,10 +301,40 @@ class _BrowseDonationsFeedState extends State<BrowseDonationsFeed> {
         Padding(
           padding: const EdgeInsets.all(12.0),
           child: TextField(
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               hintText: '🔎 Search items by keyword or category...',
-              prefixIcon: Icon(Icons.search),
-              border: OutlineInputBorder(),
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: Padding(
+                padding: const EdgeInsets.only(right: 6.0, top: 4, bottom: 4),
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.teal.shade800,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  icon: const Icon(Icons.recycling, size: 14, color: Colors.tealAccent),
+                  label: const Text('Recycle ♻️', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (c) => Scaffold(
+                          appBar: AppBar(
+                            title: const Text('♻️ Zero-Landfill Recycle Hub', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                            backgroundColor: Colors.teal.shade900,
+                            foregroundColor: Colors.white,
+                          ),
+                          body: RecycleTierScreen(user: widget.user),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
             ),
             onChanged: (val) => setState(() => _searchQuery = val),
           ),

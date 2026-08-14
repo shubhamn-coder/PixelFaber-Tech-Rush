@@ -1,7 +1,18 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
+import '../../services/notification_service.dart';
+import '../../widgets/qr_collection_modal.dart';
+import '../chat/chat_screen.dart';
+import 'create_recycle_item_screen.dart';
 
+// ─────────────────────────────────────────────────────────────────────────
+//  RecycleTierScreen  –  Donor-Recycler interaction hub
+//  • Donors post scrap batches (FAB visible ONLY for DONOR role)
+//  • Recyclers send a pickup request  → Donor accepts/rejects
+//  • After acceptance: location revealed, chat unlocked, QR handshake
+//  • Donor confirms handover to complete the recycle cycle
+// ─────────────────────────────────────────────────────────────────────────
 class RecycleTierScreen extends StatefulWidget {
   final Map<String, dynamic> user;
   const RecycleTierScreen({super.key, required this.user});
@@ -13,9 +24,11 @@ class RecycleTierScreen extends StatefulWidget {
 class _RecycleTierScreenState extends State<RecycleTierScreen> {
   List<dynamic> _recycleItems = [];
   bool _isLoading = true;
-  String _selectedCategory = 'ALL';
+  String _selectedCategory = 'All';
 
-  static final List<Map<String, dynamic>> _userCreatedRecycleItems = [];
+  String get _role => widget.user['role'] ?? 'DONOR';
+  bool get _isDonor => _role == 'DONOR';
+  bool get _isRecycler => _role == 'RECYCLER';
 
   @override
   void initState() {
@@ -24,720 +37,742 @@ class _RecycleTierScreenState extends State<RecycleTierScreen> {
   }
 
   Future<void> _fetchRecycleItems() async {
-    List<dynamic> fetched = [];
+    if (mounted) setState(() => _isLoading = true);
     try {
       final res = await ApiService.get('/donations/nearby');
       if (res.statusCode == 200) {
         final all = jsonDecode(res.body)['data'] as List<dynamic>;
-        fetched = all.where((item) {
-          final condition = (item['condition'] ?? '').toString().toLowerCase();
+        final fetched = all.where((item) {
+          final isRecycle = item['isRecycleItem'] == true;
           final category = (item['category'] ?? '').toString().toLowerCase();
-          return condition.contains('worn') ||
-              condition.contains('fair') ||
-              category.contains('e-waste') ||
+          return isRecycle ||
+              category.contains('recycle') ||
               category.contains('scrap') ||
-              category.contains('electronics');
+              category.contains('e-waste');
         }).toList();
+
+        if (mounted) {
+          setState(() {
+            _recycleItems = fetched;
+            _isLoading = false;
+          });
+        }
+      } else {
+        if (mounted) setState(() => _isLoading = false);
       }
-    } catch (_) {}
-
-    if (fetched.isEmpty) {
-      fetched = _getDemoRecycleItems();
+    } catch (_) {
+      if (mounted) setState(() => _isLoading = false);
     }
+  }
 
-    if (mounted) {
-      setState(() {
-        _recycleItems = [..._userCreatedRecycleItems, ...fetched];
-        _isLoading = false;
+  // ── Recycler sends pickup request to donor ──────────────────────────────
+  Future<void> _sendPickupRequest(Map<String, dynamic> item) async {
+    try {
+      await ApiService.patch('/donations/${item['_id']}/request', {
+        'ngoId': widget.user['_id'],
+        'ngoName': widget.user['name'],
       });
+      NotificationService().showNotification(
+        id: 202,
+        title: '♻️ Pickup Requested!',
+        body: '${widget.user['name']} has requested your scrap batch "${item['title']}".',
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: Colors.teal,
+          content: Text('✅ Pickup request sent to Donor! Awaiting acceptance...'),
+        ),
+      );
+      _fetchRecycleItems();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
     }
   }
 
-  List<Map<String, dynamic>> _getDemoRecycleItems() {
-    return [
-      {
-        '_id': 'rec_demo_1',
-        'title': '45 kg Worn-Out Cotton Sweaters & Fabric Scraps',
-        'category': 'TEXTILES',
-        'itemType': 'CLOTHING',
-        'weightKg': 45,
-        'condition': 'FAIR / WORN OUT',
-        'donorName': 'Kothrud Apparel Donation Hub',
-        'location': 'Kothrud Industrial Estate, Pune',
-        'partnerVendor': 'EcoThread Textile Shredders & Fiber Mill',
-        'description': 'Damaged or torn cotton sweaters unsuitable for direct wearing. High cotton content ready for mechanical fiber regeneration.',
-        'imageUrl': 'https://images.unsplash.com/photo-1512436991641-6745cdb1723f?w=500',
-        'status': 'AVAILABLE',
-      },
-      {
-        '_id': 'rec_demo_2',
-        'title': '20 Defunct Computer PCBs & Copper Wires Batch',
-        'category': 'E-WASTE',
-        'itemType': 'ELECTRONICS',
-        'weightKg': 18,
-        'condition': 'SCRAP / NON-FUNCTIONAL',
-        'donorName': 'Viman Nagar IT Park Surplus',
-        'location': 'Viman Nagar, Pune',
-        'partnerVendor': 'GreenRefine E-Waste Metals Recovery',
-        'description': 'Obsolete circuit boards, power supply cables, and transformers for certified precious metal extraction.',
-        'imageUrl': 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=500',
-        'status': 'AVAILABLE',
-      },
-      {
-        '_id': 'rec_demo_3',
-        'title': '80 kg Heavy-Duty Corrugated Shipping Boxes',
-        'category': 'PAPER & PACKAGING',
-        'itemType': 'SCRAP',
-        'weightKg': 80,
-        'condition': 'USED / RECYCLABLE',
-        'donorName': 'FC Road NGO Warehouse',
-        'location': 'FC Road, Shivajinagar, Pune',
-        'partnerVendor': 'Maharastra Pulp & Paper Re-Mill',
-        'description': 'Clean flattened cardboard boxes from bulk relief shipments, ready for pulping into eco-friendly packaging.',
-        'imageUrl': 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=500',
-        'status': 'CLAIMED',
-      },
-      {
-        '_id': 'rec_demo_4',
-        'title': 'Scrap Wooden Pallets & Broken Teak Frames',
-        'category': 'ARTISAN UPCYCLE',
-        'itemType': 'WOOD',
-        'weightKg': 60,
-        'condition': 'RAW SCRAP',
-        'donorName': 'Aundh Community Center',
-        'location': 'Aundh, Pune',
-        'partnerVendor': 'Puneri Craft & Furniture Upcyclers',
-        'description': 'Untreated solid pine wood pallets suitable for carpentry workshops, DIY benches, and upcycled planter boxes.',
-        'imageUrl': 'https://images.unsplash.com/photo-1538688525198-9b88f6f53126?w=500',
-        'status': 'AVAILABLE',
-      },
-    ];
+  // ── Donor accepts recycler's request ───────────────────────────────────
+  Future<void> _acceptRequest(Map<String, dynamic> item) async {
+    await ApiService.patch('/donations/${item['_id']}/accept', {});
+    _fetchRecycleItems();
   }
 
-  void _claimItem(Map<String, dynamic> item) {
-    showDialog(
-      context: context,
-      builder: (c) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            const Icon(Icons.recycling_rounded, color: Colors.teal, size: 28),
-            const SizedBox(width: 8),
-            const Expanded(
-              child: Text(
-                'Confirm Zero-Waste Claim',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              item['title'] ?? '',
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.teal),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.teal.shade50,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.teal.shade200),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('• Est. Weight: ${item['weightKg'] ?? 20} kg', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                  Text('• Category: ${item['category'] ?? 'SCRAP'}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                  Text('• Partner Hub: ${item['partnerVendor'] ?? 'Certified Eco-Processor'}', style: const TextStyle(fontSize: 12, color: Colors.teal)),
-                ],
-              ),
-            ),
-            const SizedBox(height: 10),
-            const Text(
-              'By claiming this batch as a certified Recycler or NGO, 100% of material is guaranteed diverted from municipal landfills.',
-              style: TextStyle(fontSize: 11.5, color: Colors.black87, height: 1.3),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(c),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.teal.shade800,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            icon: const Icon(Icons.verified_outlined, size: 16),
-            label: const Text('Confirm Claim & Dispatch', style: TextStyle(fontWeight: FontWeight.bold)),
-            onPressed: () {
-              Navigator.pop(c);
-              setState(() {
-                item['status'] = 'CLAIMED';
-              });
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  backgroundColor: Colors.teal,
-                  content: Row(
-                    children: [
-                      Icon(Icons.check_circle_outline, color: Colors.white),
-                      SizedBox(width: 8),
-                      Text('🎉 Batch Claimed! Zero-Landfill Certificate issued.'),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ],
+  // ── Donor confirms handover  ────────────────────────────────────────────
+  Future<void> _confirmHandover(Map<String, dynamic> item) async {
+    await ApiService.post('/donations/${item['_id']}/confirm-handover', {});
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        backgroundColor: Colors.teal,
+        content: Text('🎉 Handover confirmed! Batch moved to your Recycle Impact History.'),
       ),
     );
+    _fetchRecycleItems();
   }
 
-  void _showPostRecycleItemDialog() {
-    final materialCtrl = TextEditingController();
-    final weightCtrl = TextEditingController();
-    final targetHubCtrl = TextEditingController(text: 'EcoThread Textile Shredders & Fiber Mill');
-    final descCtrl = TextEditingController();
-    final locationCtrl = TextEditingController(text: widget.user['address'] ?? 'Kothrud, Pune, MH');
-    String category = 'TEXTILES';
+  List<dynamic> get _filteredItems {
+    if (_selectedCategory == 'All') return _recycleItems;
+    return _recycleItems.where((i) {
+      final cat = (i['category'] ?? '').toString();
+      return cat.contains(_selectedCategory);
+    }).toList();
+  }
 
-    final parentContext = context;
-
-    showDialog(
-      context: parentContext,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (modalContext, setModalState) {
-          return AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            title: const Text(
-              'Post Material for Recycling',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF0F361A)),
-            ),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
+  // ── Full-screen image gallery modal ────────────────────────────────────
+  void _showImageGallery(List<dynamic> photos) {
+    if (photos.isEmpty) return;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.black87,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (c) {
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.82,
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const SizedBox(height: 4),
-                  TextField(
-                    controller: materialCtrl,
-                    decoration: InputDecoration(
-                      labelText: 'Material Name / Scrap Title *',
-                      hintText: 'e.g., Damaged Cotton Sweaters & Fabrics',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    ),
+                  Text(
+                    '📷 Scrap Photos (${photos.length})',
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
                   ),
-                  const SizedBox(height: 12),
-
-                  TextField(
-                    controller: weightCtrl,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: 'Weight of Material (kg) *',
-                      hintText: 'e.g., 25',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  DropdownButtonFormField<String>(
-                    initialValue: category,
-                    decoration: InputDecoration(
-                      labelText: 'Material Category *',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    ),
-                    items: const [
-                      DropdownMenuItem(value: 'TEXTILES', child: Text('Textiles & Fabrics 👕')),
-                      DropdownMenuItem(value: 'E-WASTE', child: Text('E-Waste & Electronics 💻')),
-                      DropdownMenuItem(value: 'PAPER & PACKAGING', child: Text('Paper & Packaging Scraps 📦')),
-                      DropdownMenuItem(value: 'ARTISAN UPCYCLE', child: Text('Wood / Metal Artisan Upcycle 🎨')),
-                    ],
-                    onChanged: (v) {
-                      if (v != null) setModalState(() => category = v);
-                    },
-                  ),
-                  const SizedBox(height: 12),
-
-                  TextField(
-                    controller: targetHubCtrl,
-                    decoration: InputDecoration(
-                      labelText: 'Target Beneficiaries / Processing Center',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  TextField(
-                    controller: locationCtrl,
-                    decoration: InputDecoration(
-                      labelText: 'Pickup Location / Address',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  TextField(
-                    controller: descCtrl,
-                    maxLines: 2,
-                    decoration: InputDecoration(
-                      labelText: 'Additional Notes / Pickup Hours',
-                      hintText: 'e.g., High cotton content, ready for mechanical shredding.',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white),
+                    onPressed: () => Navigator.pop(c),
                   ),
                 ],
               ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(),
-                child: Text(
-                  'Cancel',
-                  style: TextStyle(color: Colors.green.shade900, fontWeight: FontWeight.bold, fontSize: 15),
-                ),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2E7D32),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                ),
-                onPressed: () {
-                  final matName = materialCtrl.text.trim();
-                  final weightStr = weightCtrl.text.trim();
-
-                  if (matName.isEmpty || weightStr.isEmpty) {
-                    ScaffoldMessenger.of(parentContext).showSnackBar(
-                      const SnackBar(
-                        content: Text('Please enter both Material Name and Weight of Material!'),
-                        duration: Duration(seconds: 2),
+              const SizedBox(height: 8),
+              Expanded(
+                child: PageView.builder(
+                  itemCount: photos.length,
+                  itemBuilder: (ctx, idx) {
+                    final photo = photos[idx].toString();
+                    return Center(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: photo.startsWith('data:image')
+                            ? Image.memory(base64Decode(photo.split(',').last), fit: BoxFit.contain)
+                            : Image.network(
+                                photo,
+                                fit: BoxFit.contain,
+                                errorBuilder: (_, _, v) => const Icon(Icons.broken_image, color: Colors.white, size: 60),
+                              ),
                       ),
                     );
-                    return;
-                  }
-
-                  final parsedWeight = double.tryParse(weightStr.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 10.0;
-                  final displayTitle = matName.toLowerCase().contains('kg')
-                      ? matName
-                      : '${parsedWeight.toStringAsFixed(parsedWeight.truncateToDouble() == parsedWeight ? 0 : 1)} kg $matName';
-
-                  final newItem = {
-                    '_id': 'rec_user_${DateTime.now().millisecondsSinceEpoch}',
-                    'title': displayTitle,
-                    'category': category,
-                    'itemType': category,
-                    'weightKg': parsedWeight,
-                    'condition': 'FAIR / WORN OUT',
-                    'donorName': widget.user['name'] ?? 'Verified Member',
-                    'location': locationCtrl.text.trim().isNotEmpty ? locationCtrl.text.trim() : 'Pune, MH',
-                    'partnerVendor': targetHubCtrl.text.trim().isNotEmpty
-                        ? targetHubCtrl.text.trim()
-                        : 'EcoThread Textile Shredders & Fiber Mill',
-                    'description': descCtrl.text.trim().isNotEmpty
-                        ? descCtrl.text.trim()
-                        : 'Worn out materials listed for zero-landfill recycling.',
-                    'status': 'AVAILABLE',
-                  };
-
-                  // 1. Immediately pop dialog safely
-                  Navigator.of(dialogContext).pop();
-
-                  // 2. Prepend item & trigger setState
-                  _userCreatedRecycleItems.insert(0, newItem);
-                  setState(() {
-                    _selectedCategory = 'ALL';
-                    _recycleItems.insert(0, newItem);
-                  });
-
-                  // 3. Show success notification on parent ScaffoldContext
-                  ScaffoldMessenger.of(parentContext).showSnackBar(
-                    SnackBar(
-                      backgroundColor: const Color(0xFF2E7D32),
-                      duration: const Duration(seconds: 3),
-                      content: Row(
-                        children: [
-                          const Icon(Icons.check_circle, color: Colors.white),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              '🎉 Material Posted! $displayTitle listed for zero-landfill processing.',
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-
-                  // 4. Background non-blocking API call
-                  ApiService.post('/donations', {
-                    'title': displayTitle,
-                    'category': category,
-                    'itemType': category,
-                    'weightKg': parsedWeight,
-                    'condition': 'WORN OUT / RECYCLE',
-                    'pickupAddress': locationCtrl.text.trim(),
-                    'description': descCtrl.text.trim(),
-                  }).then((_) {}).catchError((_) {});
-                },
-                child: const Text('Post Material', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                  },
+                ),
               ),
+              const SizedBox(height: 8),
+              const Text('Swipe left/right to view all photos', style: TextStyle(color: Colors.white70, fontSize: 12)),
             ],
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final filteredItems = _selectedCategory == 'ALL'
-        ? _recycleItems
-        : _recycleItems.where((i) => (i['category'] ?? '').toString().toUpperCase() == _selectedCategory).toList();
-
     return Scaffold(
-      backgroundColor: const Color(0xFFF2F7F4),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showPostRecycleItemDialog,
-        backgroundColor: Colors.teal.shade900,
-        foregroundColor: Colors.white,
-        elevation: 4,
-        icon: const Icon(Icons.add_circle_outline_rounded, size: 20),
-        label: const Text(
-          'Post Item for Recycling',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-        ),
-      ),
-      body: Column(
-        children: [
-          // 1. HERO ANIMATED RECYCLE MARKETPLACE BANNER
-          const AnimatedRecycleBanner(),
-
-          // 2. ZERO-WASTE STATS TOOLBAR
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 14),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.teal.shade100),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _StatWidget(icon: Icons.scale_outlined, value: '1,420 kg', label: 'Landfill Diverted'),
-                _StatWidget(icon: Icons.energy_savings_leaf_outlined, value: '98.4%', label: 'Recycle Rate'),
-                _StatWidget(icon: Icons.co2_outlined, value: '3.5 Tons', label: 'CO₂ Prevented'),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 8),
-
-          // 2.5 INLINE POST ACTION BUTTON
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            child: SizedBox(
+      backgroundColor: Colors.grey.shade100,
+      // ── FAB: only DONORS can post recycling material ─────────────────
+      floatingActionButton: _isDonor
+          ? FloatingActionButton.extended(
+              backgroundColor: Colors.teal.shade900,
+              icon: const Icon(Icons.add_circle, color: Colors.white),
+              label: const Text(
+                'Post Recycling Material',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+              ),
+              onPressed: () async {
+                final posted = await Navigator.push<bool>(
+                  context,
+                  MaterialPageRoute(builder: (c) => CreateRecycleItemScreen(user: widget.user)),
+                );
+                if (posted == true) _fetchRecycleItems();
+              },
+            )
+          : null,
+      body: RefreshIndicator(
+        color: Colors.teal.shade900,
+        onRefresh: _fetchRecycleItems,
+        child: Column(
+          children: [
+            // ── HEADER BANNER ─────────────────────────────────────────
+            Container(
               width: double.infinity,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1B5E20),
-                  foregroundColor: Colors.white,
-                  elevation: 2,
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              padding: const EdgeInsets.all(16),
+              margin: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.teal.shade900, Colors.teal.shade700],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-                icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
-                label: const Text(
-                  '➕ Post Material for Recycling',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                ),
-                onPressed: _showPostRecycleItemDialog,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 3))],
+              ),
+              child: Row(
+                children: [
+                  const _SpinningRecycleLogo(),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          '♻️ Zero-Landfill Recycle & Upcycle Hub',
+                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _isRecycler
+                              ? 'Browse donor-posted scrap batches. Send a pickup request and coordinate collection.'
+                              : 'Post your scrap material for certified recyclers to pick up.',
+                          style: const TextStyle(color: Colors.white70, fontSize: 11.5, height: 1.3),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
 
-          const SizedBox(height: 10),
-
-          // 3. CATEGORY CHIPS BAR
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            child: Row(
-              children: [
-                _buildCategoryChip('ALL', 'All Scraps ♻️'),
-                const SizedBox(width: 8),
-                _buildCategoryChip('TEXTILES', 'Textiles 👕'),
-                const SizedBox(width: 8),
-                _buildCategoryChip('E-WASTE', 'E-Waste 💻'),
-                const SizedBox(width: 8),
-                _buildCategoryChip('PAPER & PACKAGING', 'Paper 📦'),
-                const SizedBox(width: 8),
-                _buildCategoryChip('ARTISAN UPCYCLE', 'Upcycle 🎨'),
-              ],
+            // ── CATEGORY FILTER CHIPS ─────────────────────────────────
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Row(
+                children: [
+                  _filterChip('All', '✓ All ♻️'),
+                  _filterChip('Paper', 'Paper 📄'),
+                  _filterChip('Textiles', 'Textiles 👕'),
+                  _filterChip('E-Waste', 'E-Waste 💻'),
+                  _filterChip('Plastics', 'Plastics 📦'),
+                  _filterChip('Metal', 'Metal 🔩'),
+                ],
+              ),
             ),
-          ),
 
-          const SizedBox(height: 10),
+            const SizedBox(height: 8),
 
-          // 4. RECYCLE BATCH LIST WITH REFRESH INDICATOR
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: _fetchRecycleItems,
-              color: Colors.teal.shade800,
+            // ── ITEMS LIST ────────────────────────────────────────────
+            Expanded(
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator(color: Colors.teal))
-                  : filteredItems.isEmpty
+                  : _filteredItems.isEmpty
                       ? Center(
-                          child: ListView(
-                            physics: const AlwaysScrollableScrollPhysics(),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const SizedBox(height: 40),
-                              Icon(Icons.recycling, size: 50, color: Colors.teal.shade200),
-                              const SizedBox(height: 10),
-                              Center(
-                                child: Text(
-                                  'No batches currently listed under $_selectedCategory.',
-                                  style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.bold),
-                                ),
+                              Icon(Icons.recycling_outlined, size: 54, color: Colors.teal.shade200),
+                              const SizedBox(height: 12),
+                              Text(
+                                _isDonor
+                                    ? 'No recycling posts yet.\nTap the button below to post your first scrap batch!'
+                                    : 'No recycling batches available yet.\nCheck back soon!',
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(color: Colors.grey, fontSize: 13.5, height: 1.4),
                               ),
                             ],
                           ),
                         )
                       : ListView.builder(
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                          itemCount: filteredItems.length,
-                          itemBuilder: (c, i) {
-                            final item = filteredItems[i];
-                            final isClaimed = (item['status'] ?? '').toString().toUpperCase() == 'CLAIMED';
-
-                            return Card(
-                              elevation: 2,
-                              margin: const EdgeInsets.only(bottom: 14),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                              child: Padding(
-                                padding: const EdgeInsets.all(14.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Expanded(
-                                          child: Text(
-                                            item['title'] ?? '',
-                                            style: const TextStyle(
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.bold,
-                                              color: Color(0xFF0F361A),
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                          decoration: BoxDecoration(
-                                            color: isClaimed ? Colors.grey.shade200 : Colors.teal.shade50,
-                                            borderRadius: BorderRadius.circular(8),
-                                            border: Border.all(
-                                              color: isClaimed ? Colors.grey.shade400 : Colors.teal.shade300,
-                                            ),
-                                          ),
-                                          child: Text(
-                                            isClaimed ? 'CLAIMED' : 'UPCYCLE READY',
-                                            style: TextStyle(
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.bold,
-                                              color: isClaimed ? Colors.grey.shade700 : Colors.teal.shade900,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      item['description'] ?? 'High quality scrap materials ready for processing.',
-                                      style: TextStyle(fontSize: 12, color: Colors.grey.shade700, height: 1.3),
-                                    ),
-                                    const SizedBox(height: 10),
-                                    Container(
-                                      padding: const EdgeInsets.all(10),
-                                      decoration: BoxDecoration(
-                                        color: Colors.grey.shade50,
-                                        borderRadius: BorderRadius.circular(10),
-                                        border: Border.all(color: Colors.grey.shade200),
-                                      ),
-                                      child: Column(
-                                        children: [
-                                          Row(
-                                            children: [
-                                              Icon(Icons.scale_outlined, size: 14, color: Colors.teal.shade800),
-                                              const SizedBox(width: 4),
-                                              Text('Weight: ${item['weightKg'] ?? 20} kg', style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600)),
-                                              const Spacer(),
-                                              Icon(Icons.location_on_outlined, size: 14, color: Colors.teal.shade800),
-                                              const SizedBox(width: 4),
-                                              Expanded(
-                                                child: Text(
-                                                  item['location'] ?? 'Pune, MH',
-                                                  style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600),
-                                                  overflow: TextOverflow.ellipsis,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Row(
-                                            children: [
-                                              Icon(
-                                                isClaimed ? Icons.verified_outlined : Icons.business_outlined,
-                                                size: 14,
-                                                color: isClaimed ? Colors.teal.shade800 : Colors.grey.shade700,
-                                              ),
-                                              const SizedBox(width: 4),
-                                              Expanded(
-                                                child: Text(
-                                                  isClaimed
-                                                      ? 'Assigned Processor: ${item['partnerVendor'] ?? 'Certified Recycler'}'
-                                                      : 'Target Processing Hub: ${item['partnerVendor'] ?? 'Certified Recycler'}',
-                                                  style: TextStyle(
-                                                    fontSize: 11,
-                                                    color: isClaimed ? Colors.teal.shade900 : Colors.grey.shade800,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                  overflow: TextOverflow.ellipsis,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    SizedBox(
-                                      width: double.infinity,
-                                      child: ElevatedButton.icon(
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: isClaimed ? Colors.grey.shade400 : Colors.teal.shade800,
-                                          foregroundColor: Colors.white,
-                                          padding: const EdgeInsets.symmetric(vertical: 10),
-                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                        ),
-                                        icon: Icon(
-                                          isClaimed ? Icons.check_circle : Icons.recycling,
-                                          size: 18,
-                                        ),
-                                        label: Text(
-                                          isClaimed ? 'Claimed for Upcycling' : 'Claim Batch for Zero-Landfill Processing',
-                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5),
-                                        ),
-                                        onPressed: isClaimed ? null : () => _claimItem(item),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
+                          padding: const EdgeInsets.fromLTRB(12, 0, 12, 80),
+                          itemCount: _filteredItems.length,
+                          itemBuilder: (c, i) => _buildRecycleCard(_filteredItems[i]),
                         ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCategoryChip(String key, String label) {
-    final isSelected = _selectedCategory == key;
-    return ChoiceChip(
-      selected: isSelected,
-      label: Text(
-        label,
-        style: TextStyle(
-          color: isSelected ? Colors.white : Colors.teal.shade900,
-          fontWeight: FontWeight.bold,
-          fontSize: 11.5,
-        ),
-      ),
-      selectedColor: Colors.teal.shade800,
-      backgroundColor: Colors.white,
-      side: BorderSide(color: isSelected ? Colors.teal.shade800 : Colors.teal.shade200),
-      onSelected: (val) {
-        if (val) setState(() => _selectedCategory = key);
-      },
-    );
-  }
-}
-
-class _StatWidget extends StatelessWidget {
-  final IconData icon;
-  final String value;
-  final String label;
-
-  const _StatWidget({required this.icon, required this.value, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 16, color: Colors.teal.shade800),
-            const SizedBox(width: 4),
-            Text(
-              value,
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Colors.teal.shade900),
             ),
           ],
         ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: TextStyle(fontSize: 10, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
+      ),
+    );
+  }
+
+  Widget _buildRecycleCard(Map<String, dynamic> item) {
+    final status = item['status'] ?? 'AVAILABLE';
+    final isOwner = item['donorId'] == widget.user['_id'];
+    final photos = (item['photoUrls'] as List<dynamic>?) ?? [];
+    final firstPhoto = photos.isNotEmpty ? photos[0].toString() : '';
+    final title = item['title'] ?? 'Recyclable Material';
+    final category = (item['category'] ?? 'Recycle').replaceAll('Recycle - ', '');
+    final quantity = item['quantity'] ?? '—';
+    final weightKg = item['weightKg'] ?? '—';
+    final donorName = item['donorName'] ?? 'Donor';
+    final requestedByName = item['requestedByNgoName'] ?? item['requestedByName'] ?? '';
+    final requestedById = item['requestedByNgoId'] ?? item['requestedById'] ?? '';
+    final verCode = item['verificationCode'] ?? '000000';
+
+    // Location: only shown after acceptance
+    final addressStr = (status == 'ACCEPTED' || status == 'CODE_VERIFIED' || status == 'COMPLETED')
+        ? (item['address'] is Map
+            ? (item['address']['formattedAddress'] ?? item['address'].toString())
+            : (item['address']?.toString() ?? 'Pune, India'))
+        : null;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 14),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: Colors.teal.shade100, width: 1),
+      ),
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── TITLE ROW + PHOTO THUMBNAIL ──────────────────────────
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Clickable photo thumbnail
+                GestureDetector(
+                  onTap: () => _showImageGallery(photos),
+                  child: Stack(
+                    alignment: Alignment.bottomRight,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: SizedBox(
+                          width: 78,
+                          height: 78,
+                          child: firstPhoto.isNotEmpty
+                              ? (firstPhoto.startsWith('data:image')
+                                  ? Image.memory(base64Decode(firstPhoto.split(',').last), fit: BoxFit.cover)
+                                  : Image.network(
+                                      firstPhoto,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, _, v) => Container(
+                                        color: Colors.teal.shade50,
+                                        child: Icon(Icons.recycling, size: 34, color: Colors.teal.shade700),
+                                      ),
+                                    ))
+                              : Container(
+                                  color: Colors.teal.shade50,
+                                  child: Icon(Icons.recycling, size: 34, color: Colors.teal.shade700),
+                                ),
+                        ),
+                      ),
+                      if (photos.length > 1)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.7),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            '📷 ${photos.length}',
+                            style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                      const SizedBox(height: 4),
+                      Text(
+                        isOwner ? '📤 Posted by: You' : '👤 Posted by: $donorName',
+                        style: TextStyle(fontSize: 12, color: Colors.teal.shade700, fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: [
+                          _chip(category, Colors.teal.shade50, Colors.teal.shade900),
+                          _statusChip(status),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+
+            // ── PHOTO PREVIEW STRIP (if multiple) ───────────────────
+            if (photos.length > 1) ...[
+              const SizedBox(height: 10),
+              SizedBox(
+                height: 62,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: photos.length,
+                  itemBuilder: (ctx, idx) {
+                    final pUrl = photos[idx].toString();
+                    return GestureDetector(
+                      onTap: () => _showImageGallery(photos),
+                      child: Container(
+                        margin: const EdgeInsets.only(right: 8),
+                        width: 62,
+                        height: 62,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.teal.shade200),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: pUrl.startsWith('data:image')
+                              ? Image.memory(base64Decode(pUrl.split(',').last), fit: BoxFit.cover)
+                              : Image.network(pUrl, fit: BoxFit.cover,
+                                  errorBuilder: (_, _, v) => const Icon(Icons.image, color: Colors.teal)),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+
+            const SizedBox(height: 10),
+
+            // ── DETAILS BOX ──────────────────────────────────────────
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(children: [
+                          const Icon(Icons.scale_outlined, size: 14, color: Colors.teal),
+                          const SizedBox(width: 4),
+                          Text('$weightKg kg  •  Qty: $quantity',
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        ]),
+                        const SizedBox(height: 4),
+                        // Location – revealed ONLY after acceptance
+                        if (addressStr != null)
+                          Row(children: [
+                            const Icon(Icons.location_on, size: 14, color: Colors.teal),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text('Pickup: $addressStr',
+                                  style: const TextStyle(fontSize: 11.5, color: Colors.black87)),
+                            ),
+                          ])
+                        else
+                          Row(children: [
+                            const Icon(Icons.lock_outline, size: 14, color: Colors.grey),
+                            const SizedBox(width: 4),
+                            Text(
+                              _isRecycler
+                                  ? 'Location revealed after donor accepts request'
+                                  : 'Location shared after accepting pickup request',
+                              style: const TextStyle(fontSize: 11, color: Colors.grey),
+                            ),
+                          ]),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // ══════════════════════════════════════════════════════════
+            //  INTERACTION BUTTONS — mirrors Donor-NGO flow exactly
+            // ══════════════════════════════════════════════════════════
+
+            // (A) RECYCLER: send pickup request when item is AVAILABLE
+            if (_isRecycler && status == 'AVAILABLE')
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.teal.shade900,
+                  minimumSize: const Size(double.infinity, 44),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                icon: const Icon(Icons.send_rounded, color: Colors.white, size: 18),
+                label: const Text('Send Pickup Request ♻️',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                onPressed: () => _sendPickupRequest(item),
+              ),
+
+            // (A2) RECYCLER: already requested — show waiting status
+            if (_isRecycler && status == 'REQUESTED' && requestedById == widget.user['_id'])
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.orange.shade300),
+                ),
+                child: const Row(children: [
+                  Icon(Icons.hourglass_top_rounded, color: Colors.orange, size: 18),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text('⏳ Request sent – awaiting donor acceptance...',
+                        style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Colors.orange)),
+                  ),
+                ]),
+              ),
+
+            // (B) DONOR: accept / reject recycler's pickup request
+            if (isOwner && status == 'REQUESTED' && requestedByName.isNotEmpty) ...[
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.teal.shade800),
+                      icon: const Icon(Icons.check_circle, color: Colors.white),
+                      label: Text('Accept request from $requestedByName',
+                          style: const TextStyle(color: Colors.white, fontSize: 12)),
+                      onPressed: () => _acceptRequest(item),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.close, color: Colors.red, size: 18),
+                    label: const Text('Reject', style: TextStyle(color: Colors.red, fontSize: 12)),
+                    style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.red)),
+                    onPressed: () async {
+                      await ApiService.patch('/donations/${item['_id']}/reject', {});
+                      _fetchRecycleItems();
+                    },
+                  ),
+                ],
+              ),
+            ],
+
+            // (C) CODE_VERIFIED — Donor confirms handover
+            if (status == 'CODE_VERIFIED') ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.only(bottom: 8),
+                decoration: BoxDecoration(
+                  color: Colors.teal.shade50,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.teal.shade600, width: 1.5),
+                ),
+                child: Column(
+                  children: [
+                    const Row(children: [
+                      Icon(Icons.check_circle, color: Colors.teal, size: 22),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text('✅ Recycler Passcode Verified! Tap to Confirm Handover.',
+                            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.teal, fontSize: 13)),
+                      ),
+                    ]),
+                    const SizedBox(height: 8),
+                    if (isOwner)
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.teal.shade800,
+                          minimumSize: const Size(double.infinity, 42),
+                        ),
+                        icon: const Icon(Icons.handshake, color: Colors.white),
+                        label: const Text('Confirm & Complete Recycle Handover',
+                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                        onPressed: () => _confirmHandover(item),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+
+            // (D) ACCEPTED or beyond — connection info + QR + Chat
+            if (status == 'ACCEPTED' || status == 'CODE_VERIFIED' || status == 'COMPLETED') ...[
+              // Connected-with banner
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                margin: const EdgeInsets.only(bottom: 8),
+                decoration: BoxDecoration(
+                  color: Colors.teal.shade50,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.teal.shade300),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.recycling, color: Colors.teal, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        isOwner
+                            ? '♻️ Connected with Recycler: $requestedByName'
+                            : '♻️ Pickup accepted by: $donorName',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: Colors.teal.shade900),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // QR Handshake + Chat buttons
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: Colors.teal.shade700),
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                      ),
+                      icon: Icon(Icons.qr_code, color: Colors.teal.shade800, size: 16),
+                      label: Text(
+                        _isRecycler ? 'Verify QR Code' : 'QR Pass 🔑',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.teal.shade900),
+                      ),
+                      onPressed: () {
+                        QrCollectionModal.show(
+                          context,
+                          donationId: item['_id'],
+                          verificationCode: verCode,
+                          itemTitle: title,
+                          isNgo: _isRecycler, // recycler scans, donor shows
+                          onCollectionVerified: _fetchRecycleItems,
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue.shade800,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                      ),
+                      icon: const Icon(Icons.chat, color: Colors.white, size: 16),
+                      label: const Text('1-on-1 Chat 💬',
+                          style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (ctx) => ChatScreen(
+                              donationId: item['_id'],
+                              currentUserId: widget.user['_id'],
+                              recipientId: isOwner ? requestedById : item['donorId'],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ],
+
+            // (E) COMPLETED badge
+            if (status == 'COMPLETED')
+              Container(
+                margin: const EdgeInsets.only(top: 8),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.green.shade400),
+                ),
+                child: const Row(children: [
+                  Icon(Icons.check_circle, color: Colors.green, size: 20),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text('🎉 Zero-Landfill Handover Complete! Batch recycled successfully.',
+                        style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Colors.green)),
+                  ),
+                ]),
+              ),
+          ],
         ),
-      ],
+      ),
+    );
+  }
+
+  Widget _chip(String label, Color bg, Color fg) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: fg.withValues(alpha: 0.3)),
+        ),
+        child: Text(label, style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: fg)),
+      );
+
+  Widget _statusChip(String status) {
+    Color bg;
+    Color fg;
+    String label;
+    if (status == 'AVAILABLE') {
+      bg = Colors.teal.shade50; fg = Colors.teal.shade800; label = '🟢 AVAILABLE';
+    } else if (status == 'REQUESTED') {
+      bg = Colors.orange.shade50; fg = Colors.orange.shade900; label = '⏳ REQUESTED';
+    } else if (status == 'ACCEPTED') {
+      bg = Colors.blue.shade50; fg = Colors.blue.shade900; label = '✅ ACCEPTED';
+    } else if (status == 'CODE_VERIFIED') {
+      bg = Colors.purple.shade50; fg = Colors.purple.shade900; label = '🔐 CODE VERIFIED';
+    } else if (status == 'COMPLETED') {
+      bg = Colors.green.shade50; fg = Colors.green.shade900; label = '♻️ RECYCLED';
+    } else {
+      bg = Colors.grey.shade100; fg = Colors.grey.shade700; label = status;
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
+      child: Text(label, style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: fg)),
+    );
+  }
+
+  Widget _filterChip(String key, String label) {
+    final isSelected = _selectedCategory == key;
+    return Padding(
+      padding: const EdgeInsets.only(right: 6.0),
+      child: FilterChip(
+        selected: isSelected,
+        showCheckmark: false,
+        backgroundColor: Colors.white,
+        selectedColor: Colors.teal.shade800,
+        side: BorderSide(color: isSelected ? Colors.teal.shade800 : Colors.grey.shade300),
+        label: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11.5,
+            fontWeight: FontWeight.bold,
+            color: isSelected ? Colors.white : Colors.black87,
+          ),
+        ),
+        onSelected: (_) => setState(() => _selectedCategory = key),
+      ),
     );
   }
 }
 
-class AnimatedRecycleBanner extends StatefulWidget {
-  final VoidCallback? onPostPressed;
-  const AnimatedRecycleBanner({super.key, this.onPostPressed});
+// ─── Spinning animation for header icon ──────────────────────────────────────
+class _SpinningRecycleLogo extends StatefulWidget {
+  const _SpinningRecycleLogo();
 
   @override
-  State<AnimatedRecycleBanner> createState() => _AnimatedRecycleBannerState();
+  State<_SpinningRecycleLogo> createState() => _SpinningRecycleLogoState();
 }
 
-class _AnimatedRecycleBannerState extends State<AnimatedRecycleBanner> with SingleTickerProviderStateMixin {
+class _SpinningRecycleLogoState extends State<_SpinningRecycleLogo>
+    with SingleTickerProviderStateMixin {
   late AnimationController _ctrl;
 
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(vsync: this, duration: const Duration(seconds: 4))..repeat();
+    _ctrl = AnimationController(vsync: this, duration: const Duration(seconds: 8))..repeat();
   }
 
   @override
@@ -748,63 +783,9 @@ class _AnimatedRecycleBannerState extends State<AnimatedRecycleBanner> with Sing
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      margin: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Colors.teal.shade900,
-            Colors.teal.shade800,
-            const Color(0xFF0F4D32),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.teal.shade900.withValues(alpha: 0.3),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          RotationTransition(
-            turns: _ctrl,
-            child: const Icon(Icons.recycling_rounded, size: 44, color: Colors.tealAccent),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  '♻️ Zero-Landfill Recycle & Upcycle Hub',
-                  style: TextStyle(
-                    color: Colors.tealAccent,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 14,
-                    letterSpacing: 0.3,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  'Connecting Donors & NGOs to certified textile shredders, e-waste centers & upcycling artisans.',
-                  style: TextStyle(
-                    color: Colors.teal.shade100,
-                    fontSize: 11.5,
-                    height: 1.3,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+    return RotationTransition(
+      turns: _ctrl,
+      child: const Icon(Icons.recycling, size: 44, color: Colors.tealAccent),
     );
   }
 }

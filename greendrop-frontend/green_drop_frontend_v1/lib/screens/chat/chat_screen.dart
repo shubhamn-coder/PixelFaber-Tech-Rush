@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
+import '../../services/notification_service.dart';
 
 class ChatScreen extends StatefulWidget {
   final String donationId;
@@ -74,6 +75,10 @@ class _ChatScreenState extends State<ChatScreen> {
       });
 
       if (res.statusCode == 200 || res.statusCode == 201) {
+        NotificationService().addChatNotification(
+          title: '💬 1-on-1 Chat Message Sent',
+          body: text,
+        );
         await _fetch();
         if (_scrollCtrl.hasClients) {
           _scrollCtrl.animateTo(

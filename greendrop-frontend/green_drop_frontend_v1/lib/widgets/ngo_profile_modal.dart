@@ -240,81 +240,112 @@ class _NgoProfileModalState extends State<NgoProfileModal> {
             ),
             const SizedBox(height: 14),
 
-            // ADMIN LEGAL REGISTRATION DOCUMENTS SECTION
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.blue.shade50,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.blue.shade300, width: 1),
+            // NGO LEGAL REGISTRATION DOCUMENTS SECTION (ADMIN ONLY ACCESS)
+            if (widget.currentUser?['role'] == 'ADMIN') ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.blue.shade300, width: 1),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.admin_panel_settings, color: Colors.blue, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          '🔐 Admin Access Only: NGO Registration & Tax Documents',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: Colors.blue.shade900),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                            side: BorderSide(color: Colors.blue.shade400),
+                          ),
+                          icon: const Icon(Icons.description, color: Colors.red, size: 16),
+                          label: const Text('📜 Trust Deed Doc', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                          onPressed: () => _viewDocument(
+                            context,
+                            'Trust Deed Registration Document',
+                            ngoDetails['trustDeedPath'] ?? 'https://greendrop.org/docs/trust_deed_sample.pdf',
+                            'Government Registered Trust Deed Certificate',
+                          ),
+                        ),
+                        OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                            side: BorderSide(color: Colors.green.shade400),
+                          ),
+                          icon: const Icon(Icons.verified, color: Colors.green, size: 16),
+                          label: const Text('📄 80G Tax Exemption', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                          onPressed: () => _viewDocument(
+                            context,
+                            '80G Tax Exemption Certificate',
+                            ngoDetails['exemption80GPath'] ?? 'https://greendrop.org/docs/80g_exemption_sample.pdf',
+                            'Income Tax Act Section 80G Certificate for Donor Tax Exemptions',
+                          ),
+                        ),
+                        OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                            side: BorderSide(color: Colors.purple.shade400),
+                          ),
+                          icon: const Icon(Icons.card_membership, color: Colors.purple, size: 16),
+                          label: const Text('🛡️ 12A Registration', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                          onPressed: () => _viewDocument(
+                            context,
+                            '12A Registration Certificate',
+                            ngoDetails['certificate12APath'] ?? 'https://greendrop.org/docs/12a_cert_sample.pdf',
+                            'Income Tax Act Section 12A Charitable Institution Registration',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.folder_shared, color: Colors.blue, size: 20),
-                      const SizedBox(width: 8),
-                      Text(
-                        widget.currentUser?['role'] == 'ADMIN'
-                            ? '📄 Admin Portal: NGO Registration & Tax Exemption Documents'
-                            : '📄 Registered Legal & Tax Exemption Certificates',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: Colors.blue.shade900),
+            ] else ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade50,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.green.shade300, width: 1),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.verified_user, color: Colors.green.shade800, size: 24),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '🛡️ Verified & Authenticated NGO',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.green.shade900),
+                          ),
+                          const SizedBox(height: 2),
+                          const Text(
+                            'Official Trust Deed, 80G & 12A documents have been verified by GreenDrop Admin. Legal document files are restricted to Admin access only.',
+                            style: TextStyle(fontSize: 11, color: Colors.black87, height: 1.3),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                          side: BorderSide(color: Colors.blue.shade400),
-                        ),
-                        icon: const Icon(Icons.description, color: Colors.red, size: 16),
-                        label: const Text('📜 Trust Deed Doc', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                        onPressed: () => _viewDocument(
-                          context,
-                          'Trust Deed Registration Document',
-                          ngoDetails['trustDeedPath'] ?? 'https://greendrop.org/docs/trust_deed_sample.pdf',
-                          'Government Registered Trust Deed Certificate',
-                        ),
-                      ),
-                      OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                          side: BorderSide(color: Colors.green.shade400),
-                        ),
-                        icon: const Icon(Icons.verified, color: Colors.green, size: 16),
-                        label: const Text('📄 80G Tax Exemption', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                        onPressed: () => _viewDocument(
-                          context,
-                          '80G Tax Exemption Certificate',
-                          ngoDetails['exemption80GPath'] ?? 'https://greendrop.org/docs/80g_exemption_sample.pdf',
-                          'Income Tax Act Section 80G Certificate for Donor Tax Exemptions',
-                        ),
-                      ),
-                      OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                          side: BorderSide(color: Colors.purple.shade400),
-                        ),
-                        icon: const Icon(Icons.card_membership, color: Colors.purple, size: 16),
-                        label: const Text('🛡️ 12A Registration', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                        onPressed: () => _viewDocument(
-                          context,
-                          '12A Registration Certificate',
-                          ngoDetails['certificate12APath'] ?? 'https://greendrop.org/docs/12a_cert_sample.pdf',
-                          'Income Tax Act Section 12A Charitable Institution Registration',
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                    ),
+                  ],
+                ),
               ),
-            ),
+            ],
             const SizedBox(height: 16),
 
             // INTERACTIVE RATING & REVIEW FORM

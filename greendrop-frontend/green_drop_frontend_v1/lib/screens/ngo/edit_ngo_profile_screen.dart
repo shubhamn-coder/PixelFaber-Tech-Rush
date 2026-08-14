@@ -57,6 +57,7 @@ class _EditNgoProfileScreenState extends State<EditNgoProfileScreen> {
       });
 
       if (res.statusCode == 200) {
+        final data = jsonDecode(res.body)['data'] ?? {};
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -64,6 +65,7 @@ class _EditNgoProfileScreenState extends State<EditNgoProfileScreen> {
             content: Text('🎉 NGO Public Profile updated successfully!'),
           ),
         );
+        Navigator.pop(context, data);
       } else {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(

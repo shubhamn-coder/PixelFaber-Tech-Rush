@@ -57,20 +57,20 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     });
   }
 
+  bool _isThinking = false;
+
   Future<void> _handleUserQuery(String text) async {
-    if (text.trim().isEmpty) return;
+    if (text.trim().isEmpty || _isThinking) return;
 
     final userQuery = text.trim();
     setState(() {
       _messages.add({'sender': 'user', 'text': userQuery});
+      _isThinking = true;
     });
     _scrollToBottom();
 
-    // 1. Local fallback response
-    String reply =
-        "🤖 I am here to help solve every query! For specific account inquiries, feel free to reach our core support team at support@greendrop.org.";
-
     final q = userQuery.toLowerCase();
+    String reply = '';
 
     if (q.contains('track') || q.contains('pickup status') || q.contains('status')) {
       reply =
@@ -127,29 +127,35 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     } else if (q.contains('zero') || q.contains('waste') || q.contains('recycle') || q.contains('upcycle') || q.contains('earth')) {
       reply =
           "♻️ **Zero-Waste Upcycling Routing**:\n\nItems tagged as *'Fair / Worn Out'* bypass standard feeds and route to Certified Zero-Waste Upcycling Hubs (textiles, e-waste, plastics) to earn **Earth Guardian Badges**!";
-    } else {
-      reply =
-          "🤖 **GreenDrop Master Guide**:\n\n"
-          "• **Donors**: Tap **'+'** to list unused items (clothes, books, food, toys), accept NGO requests, get 80G tax receipts, and view live CO₂ impact!\n"
-          "• **NGOs**: Browse donor items in Pune, request pickups, dispatch Porter/Uber couriers, and broadcast emergency disaster drives!\n"
-          "• **Handshake Security**: Use 6-digit verification codes for 100% safe doorstep collection!";
+    } else if (q.contains('courier') || q.contains('porter') || q.contains('uber')) {
+      reply = "🚚 **Courier Dispatch**: NGOs can dispatch Porter or Uber Connect couriers directly from the donation feed with live driver & vehicle tracking!";
+    } else if (q.contains('ngo') || q.contains('directory')) {
+      reply = "🏢 **Verified NGO Directory**: Explore authenticated non-profits under Explore tab. Donors can view missions, office locations, and ratings.";
     }
 
-    // 2. Attempt live Gemini API call from backend
-    try {
-      final res = await ApiService.post('/chatbot/gemini', {'prompt': userQuery});
-      if (res.statusCode == 200) {
-        final data = jsonDecode(res.body);
-        if (data['success'] == true && data['reply'] != null && data['reply'].toString().isNotEmpty) {
-          reply = data['reply'].toString();
+    // 2. High-Speed Gemini API call with tight 2.5s timeout for general queries
+    if (reply.isEmpty) {
+      try {
+        final res = await ApiService.post('/chatbot/gemini', {'prompt': userQuery})
+            .timeout(const Duration(milliseconds: 2500));
+        if (res.statusCode == 200) {
+          final data = jsonDecode(res.body);
+          if (data['success'] == true && data['reply'] != null && data['reply'].toString().isNotEmpty) {
+            reply = data['reply'].toString().trim();
+          }
         }
-      }
-    } catch (_) {
-      // Clean silent fallback to expert local NLP engine if API key is not set
+      } catch (_) {}
+    }
+
+    if (reply.isEmpty) {
+      reply = "🤖 I am GreenDrop AI! I can guide you on donation listings, 80G tax receipts, Porter courier dispatches, 2-way passcodes, and disaster relief drives.";
     }
 
     if (!mounted) return;
-    setState(() => _messages.add({'sender': 'bot', 'text': reply}));
+    setState(() {
+      _isThinking = false;
+      _messages.add({'sender': 'bot', 'text': reply});
+    });
     _scrollToBottom();
   }
 
@@ -217,10 +223,14 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       if (isBot) ...[
-                        CircleAvatar(
-                          radius: 12,
-                          backgroundColor: Colors.green.shade800,
-                          child: const Icon(Icons.smart_toy, color: Colors.white, size: 14),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.asset(
+                            'assets/images/ai_chat_icon.png',
+                            height: 24,
+                            width: 24,
+                            fit: BoxFit.cover,
+                          ),
                         ),
                         const SizedBox(width: 8),
                       ],
@@ -234,6 +244,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
             },
           ),
         ),
+        if (_isThinking) const LinearProgressIndicator(color: Colors.green, minHeight: 3),
 
         // INPUT BAR
         Container(

@@ -35,7 +35,22 @@ app.use((0, cors_1.default)({
 }));
 app.use(express_1.default.json({ limit: '50mb' }));
 app.use(express_1.default.urlencoded({ limit: '50mb', extended: true }));
+// Disable command buffering so un-connected DB queries fail immediately instead of hanging 10 seconds.
+mongoose_1.default.set('bufferCommands', false);
 const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI;
+// Middleware to check DB connection readiness
+app.use((req, res, next) => {
+    if (req.path === '/api/health' || req.path === '/api/version' || req.path === '/version') {
+        return next();
+    }
+    if (mongoose_1.default.connection.readyState !== 1) {
+        return res.status(503).json({
+            success: false,
+            error: '⚡ Server Database Initializing: MongoDB Cloud connection is establishing. Please retry in a few seconds.',
+        });
+    }
+    next();
+});
 app.get('/api/health', (_req, res) => {
     res.status(mongoose_1.default.connection.readyState === 1 ? 200 : 503).json({
         success: mongoose_1.default.connection.readyState === 1,
@@ -55,10 +70,57 @@ app.get('/version', sendVersionResponse);
 function isValidId(id) {
     return Boolean(id) && mongoose_1.default.isValidObjectId(id);
 }
+// ─────────────────────────────────────────────
+//  PHONE OTP STORE  (in-memory, 5-min TTL)
+// ─────────────────────────────────────────────
+const otpStore = new Map();
+function generateOtp() {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+}
+// POST /api/auth/send-otp
+app.post('/api/auth/send-otp', (req, res) => {
+    const { phoneNumber } = req.body;
+    if (!phoneNumber?.trim()) {
+        return res.status(400).json({ success: false, error: 'Phone number is required.' });
+    }
+    const otp = generateOtp();
+    const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes
+    otpStore.set(phoneNumber.trim(), { otp, expiresAt });
+    // In production replace this with Twilio / Firebase Admin SMS send
+    console.log(`[OTP] Phone: ${phoneNumber}  OTP: ${otp}`);
+    res.json({
+        success: true,
+        message: 'OTP sent successfully.',
+        // Only expose OTP in test/demo mode — remove this line in production!
+        testOtp: otp,
+    });
+});
+// POST /api/auth/verify-otp
+app.post('/api/auth/verify-otp', (req, res) => {
+    const { phoneNumber, otp } = req.body;
+    if (!phoneNumber?.trim() || !otp?.trim()) {
+        return res.status(400).json({ success: false, error: 'Phone number and OTP are required.' });
+    }
+    const record = otpStore.get(phoneNumber.trim());
+    if (!record) {
+        return res.status(400).json({ success: false, error: 'No OTP found for this number. Please request a new OTP.' });
+    }
+    if (Date.now() > record.expiresAt) {
+        otpStore.delete(phoneNumber.trim());
+        return res.status(400).json({ success: false, error: 'OTP has expired. Please request a new one.' });
+    }
+    if (record.otp !== otp.trim()) {
+        return res.status(400).json({ success: false, error: 'Incorrect OTP. Please try again.' });
+    }
+    // Valid — remove the OTP and issue a simple verify token
+    otpStore.delete(phoneNumber.trim());
+    const verifyToken = Buffer.from(`${phoneNumber}:${Date.now()}`).toString('base64');
+    res.json({ success: true, verified: true, verifyToken, message: 'Phone number verified successfully!' });
+});
 // 1. AUTHENTICATION & PUBLIC PROFILES
 app.post('/api/auth/register', async (req, res) => {
     try {
-        const { role, name, email, password, phoneNumber, ngoDetails, adminSecretKey } = req.body;
+        const { role, name, email, password, phoneNumber, ngoDetails, adminSecretKey, phoneVerifyToken } = req.body;
         if (!name?.trim() || !email?.trim() || !password?.trim()) {
             return res.status(400).json({ success: false, error: 'Name, email, and password are required.' });
         }
@@ -78,12 +140,15 @@ app.post('/api/auth/register', async (req, res) => {
         const existingUser = await User_1.User.findOne({ email });
         if (existingUser)
             return res.status(400).json({ success: false, error: 'User already exists with this email address.' });
+        // Check if phone was OTP-verified during registration
+        const isPhoneVerified = Boolean(phoneVerifyToken?.trim());
         const newUser = new User_1.User({
             role: role || 'DONOR',
             name,
             email,
             passwordHash: password,
             phoneNumber,
+            isPhoneVerified,
             ngoDetails: role === 'NGO' ? { ...ngoDetails, isVerified: true } : undefined,
         });
         await newUser.save();
@@ -399,11 +464,11 @@ app.post('/api/ngo/requirements/:id/offer-help', async (req, res) => {
 // 4. DONATION LIFECYCLE & QR VERIFICATION
 app.post('/api/donations', async (req, res) => {
     try {
-        const { donorId, donorName, title, category, condition, weightKg, address, photoUrls } = req.body;
+        const { donorId, donorName, title, category, condition, weightKg, address, photoUrls, isRecycleItem, quantity } = req.body;
         const normalizedWeight = Number(weightKg);
-        if (!donorId || !title?.trim() || !category || !condition || !address?.trim() ||
+        if (!donorId || !title?.trim() || !category || !address?.trim() ||
             !Number.isFinite(normalizedWeight) || normalizedWeight <= 0) {
-            return res.status(400).json({ success: false, error: 'Provide a title, category, condition, valid weight, and pickup address.' });
+            return res.status(400).json({ success: false, error: 'Provide a title, category, valid weight, and pickup address.' });
         }
         const safeDonorId = isValidId(donorId) ? donorId : new mongoose_1.default.Types.ObjectId().toString();
         const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
@@ -412,11 +477,13 @@ app.post('/api/donations', async (req, res) => {
             donorName: donorName || 'Anonymous Donor',
             title,
             category,
-            condition,
+            condition: condition || 'Good',
             weightKg: normalizedWeight,
             photoUrls: photoUrls && photoUrls.length > 0 ? photoUrls : ['https://images.unsplash.com/photo-1532629345422-7515f3d16bb0?w=500'],
             address: { formattedAddress: address, location: { type: 'Point', coordinates: [73.8567, 18.5204] } },
             verificationCode,
+            isRecycleItem: isRecycleItem === true,
+            quantity: quantity || '1 lot',
         });
         await newDonation.save();
         res.status(201).json({ success: true, data: newDonation });
@@ -482,9 +549,9 @@ app.post('/api/donations/:id/verify-collection', async (req, res) => {
         if (donation.verificationCode !== code) {
             return res.status(400).json({ success: false, error: 'Invalid verification code.' });
         }
-        donation.status = 'CODE_VERIFIED';
+        donation.status = 'COMPLETED';
         await donation.save();
-        res.json({ success: true, data: donation, message: 'Passcode verified by NGO! Waiting for donor completion tap.' });
+        res.json({ success: true, data: donation, message: '🎉 Passcode matched! Pickup donation completed successfully.' });
     }
     catch (error) {
         res.status(500).json({ success: false, error: error.message });
@@ -498,6 +565,42 @@ app.post('/api/donations/:id/confirm-handover', async (req, res) => {
         donation.status = 'COMPLETED';
         await donation.save();
         res.json({ success: true, data: donation, message: 'Handover confirmed & completed by donor!' });
+    }
+    catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+app.post('/api/donations/:id/dispatch-courier', async (req, res) => {
+    try {
+        const { provider, vehicleType } = req.body;
+        const donation = await Donation_1.Donation.findById(req.params.id);
+        if (!donation)
+            return res.status(404).json({ success: false, error: 'Donation not found' });
+        const prov = provider || 'Porter';
+        const trackingId = 'TRK_' + prov.substring(0, 3).toUpperCase() + '_' + Math.floor(100000 + Math.random() * 900000);
+        let driverName = 'Ramesh Kumar (Porter Express)';
+        if (prov.includes('Uber'))
+            driverName = 'Suresh Sharma (Uber Connect Partner)';
+        else if (prov.includes('Zepto'))
+            driverName = 'Amit Varma (Zepto 10-Min Flash Rider)';
+        else if (prov.includes('Blinkit'))
+            driverName = 'Vikram Singh (Blinkit Courier Partner)';
+        donation.status = 'COURIER_DISPATCHED';
+        donation.courierDetails = {
+            provider: prov,
+            trackingId,
+            driverName,
+            driverPhone: '+91 9876543210',
+            estimatedArrival: '12-18 Mins',
+            vehicleType: vehicleType || '2-Wheeler Express Courier',
+            dispatchedAt: new Date(),
+        };
+        await donation.save();
+        res.json({
+            success: true,
+            data: donation,
+            message: `🚚 External courier service (${prov}) successfully dispatched for item collection!`,
+        });
     }
     catch (error) {
         res.status(500).json({ success: false, error: error.message });
@@ -642,7 +745,143 @@ app.delete('/api/admin/users/:id', async (req, res) => {
         res.status(500).json({ success: false, error: error.message });
     }
 });
-// 7. MESSAGING / CHAT API
+// 6.5 PROFILE MANAGEMENT API ROUTES
+app.patch(['/api/donor/profile', '/api/users/donor/profile'], async (req, res) => {
+    try {
+        const { donorId, userId, id, name, email, phoneNumber, address, profilePhotoUrl } = req.body;
+        const targetId = donorId || userId || id;
+        let user;
+        if (isValidId(targetId)) {
+            user = await User_1.User.findById(targetId);
+        }
+        if (!user && email) {
+            user = await User_1.User.findOne({ email });
+        }
+        if (!user)
+            return res.status(404).json({ success: false, error: 'Donor profile user not found.' });
+        if (name)
+            user.name = name;
+        if (email)
+            user.email = email;
+        if (phoneNumber !== undefined)
+            user.phoneNumber = phoneNumber;
+        if (profilePhotoUrl !== undefined)
+            user.profilePhotoUrl = profilePhotoUrl;
+        if (address !== undefined) {
+            user.address = {
+                formattedAddress: typeof address === 'string' ? address : (address.formattedAddress || 'Pune, MH'),
+                latitude: user.address?.latitude || 18.5204,
+                longitude: user.address?.longitude || 73.8567,
+            };
+        }
+        await user.save();
+        res.json({ success: true, data: user, message: 'Donor profile updated successfully!' });
+    }
+    catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+app.patch(['/api/ngo/profile', '/api/users/ngo/profile'], async (req, res) => {
+    try {
+        const { ngoId, userId, id, description, officeAddress, phoneNumber, websiteUrl, linkedinUrl, instagramUrl, facebookUrl, youtubeUrl, profilePhotoUrl } = req.body;
+        const targetId = ngoId || userId || id;
+        let user;
+        if (isValidId(targetId)) {
+            user = await User_1.User.findById(targetId);
+        }
+        if (!user)
+            return res.status(404).json({ success: false, error: 'NGO profile user not found.' });
+        if (phoneNumber !== undefined)
+            user.phoneNumber = phoneNumber;
+        if (profilePhotoUrl !== undefined)
+            user.profilePhotoUrl = profilePhotoUrl;
+        if (!user.ngoDetails)
+            user.ngoDetails = {};
+        if (description !== undefined)
+            user.ngoDetails.description = description;
+        if (officeAddress !== undefined)
+            user.ngoDetails.officeAddress = officeAddress;
+        if (websiteUrl !== undefined)
+            user.ngoDetails.websiteUrl = websiteUrl;
+        if (linkedinUrl !== undefined)
+            user.ngoDetails.linkedinUrl = linkedinUrl;
+        if (instagramUrl !== undefined)
+            user.ngoDetails.instagramUrl = instagramUrl;
+        if (facebookUrl !== undefined)
+            user.ngoDetails.facebookUrl = facebookUrl;
+        if (youtubeUrl !== undefined)
+            user.ngoDetails.youtubeUrl = youtubeUrl;
+        user.markModified('ngoDetails');
+        await user.save();
+        res.json({ success: true, data: user, message: 'NGO public profile updated successfully!' });
+    }
+    catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+// 7. GOOGLE GEMINI AI CHATBOT API
+app.post('/api/chatbot/gemini', async (req, res) => {
+    try {
+        const { prompt } = req.body;
+        if (!prompt?.trim()) {
+            return res.status(400).json({ success: false, error: 'Prompt is required.' });
+        }
+        const apiKey = process.env.GEMINI_API_KEY;
+        if (!apiKey) {
+            return res.status(503).json({
+                success: false,
+                error: 'Gemini API key is not configured in Environment Variables.',
+            });
+        }
+        const systemInstruction = `You are GreenDrop AI, an empathetic, highly intelligent AI Assistant & Concierge for the GreenDrop platform in Pune, India.
+
+Your goal is to provide rich, comprehensive, detailed, and helpful AI responses with clear step-by-step guidance, explaining the reasoning behind app features and answering the user's query thoroughly.
+
+GreenDrop System Knowledge:
+1. 80G Tax Exemption Receipts: Donors receive official 80G tax-deductible PDF receipts for contributions to verified NGOs (like SAMS Relief Network). Downloadable under Profile.
+2. 2-Way Cryptographic Passcode Handshake: Generates a 6-digit code for claimed donations. NGO enters the code at doorstep pickup; donor confirms handover to finalize transaction.
+3. On-Demand Courier Integration: NGOs can dispatch Porter, Uber Connect, Zepto Express, or Blinkit Flash couriers with live vehicle choice and driver tracking.
+4. Emergency Disaster Relief Drives: NGOs in crisis zones toggle Disaster Relief Mode to display a red 32px emergency ticker banner across top of donor feeds for urgent supply drives.
+5. In-App Interactive Maps: Renders verified NGO office pins (SAMS Relief Network HQ in Kothrud, Pune) and driver route polylines.
+6. Zero-Waste Upcycling: Worn-out items route to eco-hubs to prevent landfill pollution and award Earth Guardian Badges.
+
+User Question: ${prompt}
+
+Provide a detailed, thorough, multi-step response with clear explanations:`;
+        const fetchRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/interactions?key=${apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                model: 'models/gemini-3.6-flash',
+                input: systemInstruction,
+            }),
+        });
+        const data = await fetchRes.json();
+        if (!fetchRes.ok) {
+            throw new Error(data.error?.message || 'Gemini API error');
+        }
+        let replyText = '';
+        if (Array.isArray(data.steps)) {
+            for (const step of data.steps) {
+                if (step.type === 'model_output' && Array.isArray(step.content)) {
+                    for (const item of step.content) {
+                        if (item.text)
+                            replyText += item.text;
+                    }
+                }
+            }
+        }
+        if (!replyText.trim() && data.outputs?.[0]?.text) {
+            replyText = data.outputs[0].text;
+        }
+        res.json({ success: true, reply: replyText || 'Hello! How can I assist your GreenDrop donation journey today?', model: 'gemini-3.6-flash' });
+    }
+    catch (error) {
+        console.error('Gemini API Error:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+// 8. MESSAGING / CHAT API
 app.get('/api/chat/:donationId', async (req, res) => {
     try {
         const messages = await Message_1.Message.find({ donationId: req.params.donationId }).sort({ createdAt: 1 });
@@ -671,7 +910,9 @@ async function connectWithRetry() {
         return;
     }
     try {
-        await mongoose_1.default.connect(MONGO_URI);
+        await mongoose_1.default.connect(MONGO_URI, {
+            serverSelectionTimeoutMS: 5000,
+        });
         console.log('✅ MongoDB connected successfully.');
         await createDemoUserIfMissing('donor@greendrop.com');
         await createDemoUserIfMissing('ngo@smilepune.org');
@@ -679,8 +920,8 @@ async function connectWithRetry() {
         console.log('⚡ GreenDrop: Demo accounts pre-seeded & ready.');
     }
     catch (dbErr) {
-        console.error(`⚠️ MongoDB Connection Error: ${dbErr.message}. Retrying connection in 5s...`);
-        setTimeout(connectWithRetry, 5000);
+        console.error(`⚠️ MongoDB Connection Error: ${dbErr.message}. Retrying connection in 3s...`);
+        setTimeout(connectWithRetry, 3000);
     }
 }
 async function startServer() {

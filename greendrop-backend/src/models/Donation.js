@@ -43,6 +43,8 @@ const donationSchema = new mongoose_1.Schema({
     condition: { type: String, required: true },
     weightKg: { type: Number, required: true },
     photoUrls: { type: [String], default: [] },
+    isRecycleItem: { type: Boolean, default: false },
+    quantity: { type: String, default: '1 lot' },
     address: {
         formattedAddress: { type: String, required: true },
         location: {
@@ -52,12 +54,21 @@ const donationSchema = new mongoose_1.Schema({
     },
     status: {
         type: String,
-        enum: ['AVAILABLE', 'REQUESTED', 'ACCEPTED', 'CODE_VERIFIED', 'COMPLETED', 'COLLECTED'],
+        enum: ['AVAILABLE', 'REQUESTED', 'ACCEPTED', 'CODE_VERIFIED', 'COURIER_DISPATCHED', 'COMPLETED', 'COLLECTED'],
         default: 'AVAILABLE'
     },
     requestedByNgoId: { type: String },
     requestedByNgoName: { type: String },
     verificationCode: { type: String, required: true },
+    courierDetails: {
+        provider: { type: String },
+        trackingId: { type: String },
+        driverName: { type: String },
+        driverPhone: { type: String },
+        estimatedArrival: { type: String },
+        vehicleType: { type: String },
+        dispatchedAt: { type: Date, default: Date.now },
+    },
 }, { timestamps: true });
 donationSchema.index({ 'address.location': '2dsphere' });
 exports.Donation = mongoose_1.default.model('Donation', donationSchema);

@@ -66,6 +66,7 @@ flutter:
 
   assets:
     - assets/images/greendrop_logo.png
+    - assets/images/ai_chat_icon.png
 
 
   # An image asset can refer to one or more resolution-specific "variants", see

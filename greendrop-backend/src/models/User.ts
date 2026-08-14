@@ -4,7 +4,7 @@ export interface IUser extends Document {
   name: string;
   email: string;
   passwordHash: string;
-  role: 'DONOR' | 'NGO' | 'ADMIN';
+  role: 'DONOR' | 'NGO' | 'RECYCLER' | 'ADMIN';
   phoneNumber?: string;
   profilePhotoUrl?: string;
   averageRating?: number;
@@ -18,6 +18,7 @@ export interface IUser extends Document {
   warningCount?: number;
   lastWarningReason?: string;
   isBanned?: boolean;
+  isPhoneVerified?: boolean;
   ngoDetails?: {
     registrationNumber?: string;
     darpanId?: string;
@@ -48,7 +49,7 @@ const userSchema = new Schema<IUser>(
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     passwordHash: { type: String, required: true },
-    role: { type: String, enum: ['DONOR', 'NGO', 'ADMIN'], default: 'DONOR' },
+    role: { type: String, enum: ['DONOR', 'NGO', 'RECYCLER', 'ADMIN'], default: 'DONOR' },
     phoneNumber: { type: String, default: '' },
     profilePhotoUrl: { type: String, default: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150' },
     averageRating: { type: Number, default: 5.0 },
@@ -62,6 +63,7 @@ const userSchema = new Schema<IUser>(
     warningCount: { type: Number, default: 0 },
     lastWarningReason: { type: String, default: '' },
     isBanned: { type: Boolean, default: false },
+    isPhoneVerified: { type: Boolean, default: false },
     ngoDetails: {
       registrationNumber: { type: String },
       darpanId: { type: String },
